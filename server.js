@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const { v4: uuidv4 } = require('uuid');
 const http = require('http');
 const socketIo = require('socket.io');
 const { MongoClient } = require('mongodb');
@@ -30,19 +29,30 @@ cloudinary.config({
     api_secret: process.env.CLOUD_API_SECRET
 });
 
-// ========== MULTER MEMORY STORAGE (tanpa disk) ==========
+// ========== MULTER MEMORY STORAGE ==========
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 
-// ========== KONEKSI MONGODB ==========
-const client = new MongoClient(process.env.MONGODB_URI);
+// ========== KONEKSI MONGODB (DENGAN OPSI TLS UNTUK MENGATASI ERROR SSL) ==========
+const client = new MongoClient(process.env.MONGODB_URI, {
+    tlsAllowInvalidCertificates: true,  // Solusi sementara untuk error SSL
+    tlsAllowInvalidHostnames: true,     // Solusi sementara untuk error SSL
+    connectTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 30000
+});
 let db;
 
 async function connectDB() {
     try {
         await client.connect();
         db = client.db('gathering');
-        console.log('✅ MongoDB connected');
+        console.log('✅ MongoDB connected to database: gathering');
+        
+        // Buat indeks untuk performa (opsional)
+        await db.collection('users').createIndex({ username: 1 }, { unique: true });
+        await db.collection('users').createIndex({ email: 1 }, { unique: true });
+        await db.collection('messages').createIndex({ channelId: 1, timestamp: -1 });
+        
     } catch (err) {
         console.error('❌ MongoDB connection error:', err);
         process.exit(1);
@@ -62,7 +72,7 @@ function generateInviteCode() {
     return code;
 }
 
-// ========== ENDPOINT UPLOAD (manual ke Cloudinary) ==========
+// ========== ENDPOINT UPLOAD ==========
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
@@ -71,7 +81,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         const result = await new Promise((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
-                    folder: 'discord-clone',
+                    folder: 'gathering-app',
                     resource_type: 'auto',
                     allowed_formats: ['jpg', 'png', 'gif', 'mp4', 'pdf', 'zip', 'txt', 'docx']
                 },
@@ -99,176 +109,247 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
 // ========== ROUTES USERS ==========
 app.get('/api/users', async (req, res) => {
-    const users = await db.collection('users').find({}).project({ password: 0 }).toArray();
-    res.json(users);
+    try {
+        const users = await db.collection('users').find({}).project({ password: 0 }).toArray();
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/users/register', async (req, res) => {
-    const { username, email, password } = req.body;
-    const existing = await db.collection('users').findOne({ $or: [{ username }, { email }] });
-    if (existing) return res.status(400).json({ error: 'Username or email exists' });
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = {
-        id: generateId(),
-        username,
-        email,
-        password: hashedPassword,
-        avatar: username.charAt(0).toUpperCase(),
-        createdAt: new Date().toISOString()
-    };
-    await db.collection('users').insertOne(newUser);
-    const { password: _, ...userWithoutPassword } = newUser;
-    res.status(201).json(userWithoutPassword);
+    try {
+        const { username, email, password } = req.body;
+        const existing = await db.collection('users').findOne({ $or: [{ username }, { email }] });
+        if (existing) return res.status(400).json({ error: 'Username or email exists' });
+        
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = {
+            id: generateId(),
+            username,
+            email,
+            password: hashedPassword,
+            avatar: username.charAt(0).toUpperCase(),
+            createdAt: new Date().toISOString()
+        };
+        await db.collection('users').insertOne(newUser);
+        const { password: _, ...userWithoutPassword } = newUser;
+        res.status(201).json(userWithoutPassword);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/users/login', async (req, res) => {
-    const { username, password } = req.body;
-    const user = await db.collection('users').findOne({ username });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-    const { password: _, ...userWithoutPassword } = user;
-    res.json(userWithoutPassword);
+    try {
+        const { username, password } = req.body;
+        const user = await db.collection('users').findOne({ username });
+        if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+        
+        const valid = await bcrypt.compare(password, user.password);
+        if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+        
+        const { password: _, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ========== ROUTES SERVERS ==========
 app.get('/api/servers', async (req, res) => {
-    const servers = await db.collection('servers').find({}).toArray();
-    res.json(servers);
+    try {
+        const servers = await db.collection('servers').find({}).toArray();
+        res.json(servers);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/servers', async (req, res) => {
-    const { name, ownerId } = req.body;
-    const newServer = {
-        id: generateId(),
-        name,
-        ownerId,
-        inviteCode: generateInviteCode(),
-        createdAt: new Date().toISOString()
-    };
-    await db.collection('servers').insertOne(newServer);
-    io.emit('servers-updated', await db.collection('servers').find({}).toArray());
-    res.status(201).json(newServer);
+    try {
+        const { name, ownerId } = req.body;
+        const newServer = {
+            id: generateId(),
+            name,
+            ownerId,
+            inviteCode: generateInviteCode(),
+            createdAt: new Date().toISOString()
+        };
+        await db.collection('servers').insertOne(newServer);
+        io.emit('servers-updated', await db.collection('servers').find({}).toArray());
+        res.status(201).json(newServer);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.delete('/api/servers/:id', async (req, res) => {
-    const { id } = req.params;
-    await db.collection('servers').deleteOne({ id });
-    await db.collection('channels').deleteMany({ serverId: id });
-    await db.collection('serverMembers').deleteMany({ serverId: id });
-    io.emit('servers-updated', await db.collection('servers').find({}).toArray());
-    res.json({ success: true });
+    try {
+        const { id } = req.params;
+        await db.collection('servers').deleteOne({ id });
+        await db.collection('channels').deleteMany({ serverId: id });
+        await db.collection('serverMembers').deleteMany({ serverId: id });
+        io.emit('servers-updated', await db.collection('servers').find({}).toArray());
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ========== SERVER MEMBERS ==========
 app.get('/api/serverMembers', async (req, res) => {
-    const members = await db.collection('serverMembers').find({}).toArray();
-    res.json(members);
+    try {
+        const members = await db.collection('serverMembers').find({}).toArray();
+        res.json(members);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/serverMembers', async (req, res) => {
-    const { serverId, userId } = req.body;
-    const newMember = {
-        id: generateId(),
-        serverId,
-        userId,
-        role: 'member',
-        joinedAt: new Date().toISOString()
-    };
-    await db.collection('serverMembers').insertOne(newMember);
-    io.emit('members-updated', await db.collection('serverMembers').find({}).toArray());
-    res.status(201).json(newMember);
+    try {
+        const { serverId, userId } = req.body;
+        const newMember = {
+            id: generateId(),
+            serverId,
+            userId,
+            role: 'member',
+            joinedAt: new Date().toISOString()
+        };
+        await db.collection('serverMembers').insertOne(newMember);
+        io.emit('members-updated', await db.collection('serverMembers').find({}).toArray());
+        res.status(201).json(newMember);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.put('/api/serverMembers/:id', async (req, res) => {
-    const { id } = req.params;
-    const { role } = req.body;
-    const result = await db.collection('serverMembers').findOneAndUpdate(
-        { id },
-        { $set: { role } },
-        { returnDocument: 'after' }
-    );
-    if (!result.value) return res.status(404).json({ error: 'Member not found' });
-    io.emit('members-updated', await db.collection('serverMembers').find({}).toArray());
-    res.json(result.value);
+    try {
+        const { id } = req.params;
+        const { role } = req.body;
+        const result = await db.collection('serverMembers').findOneAndUpdate(
+            { id },
+            { $set: { role } },
+            { returnDocument: 'after' }
+        );
+        if (!result.value) return res.status(404).json({ error: 'Member not found' });
+        io.emit('members-updated', await db.collection('serverMembers').find({}).toArray());
+        res.json(result.value);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.delete('/api/serverMembers/:id', async (req, res) => {
-    const { id } = req.params;
-    await db.collection('serverMembers').deleteOne({ id });
-    io.emit('members-updated', await db.collection('serverMembers').find({}).toArray());
-    res.json({ success: true });
+    try {
+        const { id } = req.params;
+        await db.collection('serverMembers').deleteOne({ id });
+        io.emit('members-updated', await db.collection('serverMembers').find({}).toArray());
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ========== CHANNELS ==========
 app.get('/api/channels', async (req, res) => {
-    const channels = await db.collection('channels').find({}).toArray();
-    res.json(channels);
+    try {
+        const channels = await db.collection('channels').find({}).toArray();
+        res.json(channels);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/channels', async (req, res) => {
-    const { serverId, name } = req.body;
-    const newChannel = {
-        id: generateId(),
-        serverId,
-        name,
-        createdAt: new Date().toISOString()
-    };
-    await db.collection('channels').insertOne(newChannel);
-    io.emit('channels-updated', await db.collection('channels').find({}).toArray());
-    res.status(201).json(newChannel);
+    try {
+        const { serverId, name } = req.body;
+        const newChannel = {
+            id: generateId(),
+            serverId,
+            name,
+            createdAt: new Date().toISOString()
+        };
+        await db.collection('channels').insertOne(newChannel);
+        io.emit('channels-updated', await db.collection('channels').find({}).toArray());
+        res.status(201).json(newChannel);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.delete('/api/channels/:id', async (req, res) => {
-    const { id } = req.params;
-    await db.collection('messages').deleteMany({ channelId: id });
-    await db.collection('channels').deleteOne({ id });
-    io.emit('channels-updated', await db.collection('channels').find({}).toArray());
-    io.emit('messages-updated', await db.collection('messages').find({}).toArray());
-    res.json({ success: true });
+    try {
+        const { id } = req.params;
+        await db.collection('messages').deleteMany({ channelId: id });
+        await db.collection('channels').deleteOne({ id });
+        io.emit('channels-updated', await db.collection('channels').find({}).toArray());
+        io.emit('messages-updated', await db.collection('messages').find({}).toArray());
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ========== MESSAGES ==========
 app.get('/api/messages', async (req, res) => {
-    const messages = await db.collection('messages').find({}).toArray();
-    res.json(messages);
+    try {
+        const messages = await db.collection('messages').find({}).toArray();
+        res.json(messages);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.post('/api/messages', async (req, res) => {
-    const { channelId, userId, username, content, fileUrl, fileType } = req.body;
-    const newMessage = {
-        id: generateId(),
-        channelId,
-        userId,
-        username,
-        content: content || '',
-        fileUrl: fileUrl || null,
-        fileType: fileType || null,
-        timestamp: new Date().toISOString()
-    };
-    await db.collection('messages').insertOne(newMessage);
-    io.emit('messages-updated', await db.collection('messages').find({}).toArray());
-    res.status(201).json(newMessage);
+    try {
+        const { channelId, userId, username, content, fileUrl, fileType } = req.body;
+        const newMessage = {
+            id: generateId(),
+            channelId,
+            userId,
+            username,
+            content: content || '',
+            fileUrl: fileUrl || null,
+            fileType: fileType || null,
+            timestamp: new Date().toISOString()
+        };
+        await db.collection('messages').insertOne(newMessage);
+        io.emit('messages-updated', await db.collection('messages').find({}).toArray());
+        res.status(201).json(newMessage);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.put('/api/messages/:id', async (req, res) => {
-    const { id } = req.params;
-    const { content } = req.body;
-    const result = await db.collection('messages').findOneAndUpdate(
-        { id },
-        { $set: { content, editedAt: new Date().toISOString() } },
-        { returnDocument: 'after' }
-    );
-    if (!result.value) return res.status(404).json({ error: 'Message not found' });
-    io.emit('messages-updated', await db.collection('messages').find({}).toArray());
-    res.json(result.value);
+    try {
+        const { id } = req.params;
+        const { content } = req.body;
+        const result = await db.collection('messages').findOneAndUpdate(
+            { id },
+            { $set: { content, editedAt: new Date().toISOString() } },
+            { returnDocument: 'after' }
+        );
+        if (!result.value) return res.status(404).json({ error: 'Message not found' });
+        io.emit('messages-updated', await db.collection('messages').find({}).toArray());
+        res.json(result.value);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.delete('/api/messages/:id', async (req, res) => {
-    const { id } = req.params;
-    await db.collection('messages').deleteOne({ id });
-    io.emit('messages-updated', await db.collection('messages').find({}).toArray());
-    res.json({ success: true });
+    try {
+        const { id } = req.params;
+        await db.collection('messages').deleteOne({ id });
+        io.emit('messages-updated', await db.collection('messages').find({}).toArray());
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ========== SOCKET.IO ==========
