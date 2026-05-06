@@ -41,7 +41,7 @@ let db;
 async function connectDB() {
     try {
         await client.connect();
-        db = client.db('discord_clone');
+        db = client.db('gathering');
         console.log('✅ MongoDB connected');
     } catch (err) {
         console.error('❌ MongoDB connection error:', err);
