@@ -1,6 +1,4 @@
-// server.js - Final version for Render + MongoDB + Cloudinary
-require('dotenv').config(); // opsional untuk local testing, di Render tidak wajib karena sudah set env vars
-
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -10,16 +8,12 @@ const http = require('http');
 const socketIo = require('socket.io');
 const { MongoClient } = require('mongodb');
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 // ========== INISIALISASI APP ==========
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-    cors: {
-        origin: "*",  // Sesuaikan jika perlu, untuk production sebaiknya domain spesifik
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 const PORT = process.env.PORT || 3000;
@@ -27,7 +21,7 @@ const PORT = process.env.PORT || 3000;
 // ========== MIDDLEWARE ==========
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // static files (frontend)
+app.use(express.static('public'));
 
 // ========== KONFIGURASI CLOUDINARY ==========
 cloudinary.config({
@@ -36,16 +30,9 @@ cloudinary.config({
     api_secret: process.env.CLOUD_API_SECRET
 });
 
-// ========== MULTER + CLOUDINARY STORAGE ==========
-const cloudinaryStorage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'discord-clone',
-        allowed_formats: ['jpg', 'png', 'gif', 'mp4', 'pdf', 'zip', 'txt', 'docx'],
-        resource_type: 'auto'
-    }
-});
-const upload = multer({ storage: cloudinaryStorage });
+// ========== MULTER MEMORY STORAGE (tanpa disk) ==========
+const memoryStorage = multer.memoryStorage();
+const upload = multer({ storage: memoryStorage });
 
 // ========== KONEKSI MONGODB ==========
 const client = new MongoClient(process.env.MONGODB_URI);
@@ -54,7 +41,7 @@ let db;
 async function connectDB() {
     try {
         await client.connect();
-        db = client.db('discord_clone'); // nama database
+        db = client.db('discord_clone');
         console.log('✅ MongoDB connected');
     } catch (err) {
         console.error('❌ MongoDB connection error:', err);
@@ -62,7 +49,6 @@ async function connectDB() {
     }
 }
 
-// ========== FUNGSI BANTU ==========
 function generateId() {
     return Date.now().toString() + Math.random().toString(36).substr(2, 9);
 }
@@ -76,21 +62,39 @@ function generateInviteCode() {
     return code;
 }
 
-// ========== ENDPOINT UPLOAD (Cloudinary) ==========
-app.post('/api/upload', upload.single('file'), (req, res) => {
+// ========== ENDPOINT UPLOAD (manual ke Cloudinary) ==========
+app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
-    // req.file.path adalah URL dari Cloudinary
-    res.json({
-        url: req.file.path,
-        filename: req.file.filename,
-        originalname: req.file.originalname,
-        size: req.file.size,
-        type: req.file.mimetype.split('/')[0],
-        mimetype: req.file.mimetype,
-        extension: req.file.originalname.split('.').pop().toLowerCase()
-    });
+    try {
+        const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    folder: 'discord-clone',
+                    resource_type: 'auto',
+                    allowed_formats: ['jpg', 'png', 'gif', 'mp4', 'pdf', 'zip', 'txt', 'docx']
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            );
+            uploadStream.end(req.file.buffer);
+        });
+        res.json({
+            url: result.secure_url,
+            filename: result.public_id,
+            originalname: req.file.originalname,
+            size: req.file.size,
+            type: req.file.mimetype.split('/')[0],
+            mimetype: req.file.mimetype,
+            extension: req.file.originalname.split('.').pop().toLowerCase()
+        });
+    } catch (err) {
+        console.error('Upload error:', err);
+        res.status(500).json({ error: 'Upload failed', details: err.message });
+    }
 });
 
 // ========== ROUTES USERS ==========
@@ -101,11 +105,8 @@ app.get('/api/users', async (req, res) => {
 
 app.post('/api/users/register', async (req, res) => {
     const { username, email, password } = req.body;
-    // cek duplikat
     const existing = await db.collection('users').findOne({ $or: [{ username }, { email }] });
-    if (existing) {
-        return res.status(400).json({ error: 'Username or email already exists' });
-    }
+    if (existing) return res.status(400).json({ error: 'Username or email exists' });
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = {
         id: generateId(),
@@ -123,9 +124,9 @@ app.post('/api/users/register', async (req, res) => {
 app.post('/api/users/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await db.collection('users').findOne({ username });
-    if (!user) return res.status(401).json({ error: 'Invalid username or password' });
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) return res.status(401).json({ error: 'Invalid username or password' });
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
     const { password: _, ...userWithoutPassword } = user;
     res.json(userWithoutPassword);
 });
@@ -153,14 +154,13 @@ app.post('/api/servers', async (req, res) => {
 app.delete('/api/servers/:id', async (req, res) => {
     const { id } = req.params;
     await db.collection('servers').deleteOne({ id });
-    // juga hapus semua channel, member, message yang terkait (optional, sesuai kebutuhan)
     await db.collection('channels').deleteMany({ serverId: id });
     await db.collection('serverMembers').deleteMany({ serverId: id });
     io.emit('servers-updated', await db.collection('servers').find({}).toArray());
     res.json({ success: true });
 });
 
-// ========== ROUTES SERVER MEMBERS ==========
+// ========== SERVER MEMBERS ==========
 app.get('/api/serverMembers', async (req, res) => {
     const members = await db.collection('serverMembers').find({}).toArray();
     res.json(members);
@@ -200,7 +200,7 @@ app.delete('/api/serverMembers/:id', async (req, res) => {
     res.json({ success: true });
 });
 
-// ========== ROUTES CHANNELS ==========
+// ========== CHANNELS ==========
 app.get('/api/channels', async (req, res) => {
     const channels = await db.collection('channels').find({}).toArray();
     res.json(channels);
@@ -221,7 +221,6 @@ app.post('/api/channels', async (req, res) => {
 
 app.delete('/api/channels/:id', async (req, res) => {
     const { id } = req.params;
-    // hapus juga semua pesan di channel ini
     await db.collection('messages').deleteMany({ channelId: id });
     await db.collection('channels').deleteOne({ id });
     io.emit('channels-updated', await db.collection('channels').find({}).toArray());
@@ -229,7 +228,7 @@ app.delete('/api/channels/:id', async (req, res) => {
     res.json({ success: true });
 });
 
-// ========== ROUTES MESSAGES ==========
+// ========== MESSAGES ==========
 app.get('/api/messages', async (req, res) => {
     const messages = await db.collection('messages').find({}).toArray();
     res.json(messages);
@@ -275,12 +274,10 @@ app.delete('/api/messages/:id', async (req, res) => {
 // ========== SOCKET.IO ==========
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-    });
+    socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
 });
 
-// ========== START SERVER AFTER DB CONNECTION ==========
+// ========== START SERVER ==========
 async function startServer() {
     await connectDB();
     server.listen(PORT, () => {
