@@ -32,10 +32,30 @@ if (!fs.existsSync(uploadsDir)) {
 
 app.use('/uploads', express.static(uploadsDir));
 
+// Multer configuration
+const localStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+        const originalName = file.originalname.replace(/[^a-zA-Z0-9.\-_,\s]/g, '_');
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substr(2, 6);
+        const filename = `${timestamp}-${random}-${originalName}`;
+        cb(null, filename);
+    }
+});
+
 // ini harusnya dihapus
 const fileFilter = (req, file, cb) => {
     cb(null, true);
 };
+
+const upload = multer({ 
+    storage: localStorage,
+    fileFilter: fileFilter,
+    limits: { fileSize: 1024 * 1024 * 1024 }
+});
 
 // Database path
 const DB_PATH = path.join(__dirname, 'database.json');
