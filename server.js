@@ -397,7 +397,7 @@ cloudinary.config({
 });
 
 // Storage Cloudinary
-const storage = new CloudinaryStorage({
+const cloudinaryStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
         folder: 'discord-clone',
@@ -406,7 +406,7 @@ const storage = new CloudinaryStorage({
     }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage: cloudinaryStorage });
 
 // Koneksi MongoDB
 const client = new MongoClient(process.env.MONGODB_URI);
