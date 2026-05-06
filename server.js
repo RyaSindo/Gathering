@@ -33,7 +33,7 @@ let db;
 const cloudinaryStorage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'discord-clone',
+        folder: 'uploads',
         allowed_formats: ['jpg','png','gif','mp4','pdf','zip','txt','docx'],
         resource_type: 'auto'
     }
