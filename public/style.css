@@ -1004,6 +1004,7 @@ body {
 }
 
 /* ============ MOBILE RESPONSIVE ============ */
+/* ============ MOBILE RESPONSIVE ============ */
 @media (max-width: 768px) {
     /* Sembunyikan sidebar di mobile */
     .left-sidebar {
@@ -1023,7 +1024,7 @@ body {
         transform: translateX(0);
     }
 
-    /* MIDDLE SIDEBAR juga jadi slide menu di mobile */
+    /* Aktifkan middle sidebar untuk mobile */
     .middle-sidebar {
         position: fixed;
         top: 0;
@@ -1045,9 +1046,11 @@ body {
         display: flex;
     }
 
-    /* Chat area full width */
+    /* Chat area full width - PERBAIKAN */
     .chat-area {
         width: 100%;
+        margin-top: 56px; /* Naikkan 20px dari default (biasanya 36px) */
+        height: calc(100vh - 56px);
     }
 
     /* Mobile menu buttons */
@@ -1057,12 +1060,58 @@ body {
         justify-content: center;
     }
 
-    .chat-header-left h3 {
-        font-size: 13px;
+    /* Chat header - PERBAIKAN */
+    .chat-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 99;
+        background-color: #313338;
+        padding: 12px 16px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
 
+    .chat-header-left h3 {
+        font-size: 14px;
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Messages container - disesuaikan dengan fixed header */
     .messages-container {
         padding: 12px;
+        padding-top: 16px;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    /* Message input container - fixed di bottom */
+    .message-input-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #313338;
+        padding: 10px 12px;
+        border-top: 1px solid #1e1f22;
+        z-index: 99;
+    }
+
+    /* File preview area - disesuaikan */
+    .file-preview-area {
+        margin: 0 12px;
+        position: fixed;
+        bottom: 80px;
+        left: 0;
+        right: 0;
+        z-index: 98;
+        background-color: #2b2d31;
     }
 
     .message-file img {
@@ -1095,6 +1144,7 @@ body {
 
     .sticker-btn {
         right: 55px;
+        bottom: 12px;
     }
 }
 
@@ -1113,5 +1163,10 @@ body {
 
     .auth-box {
         padding: 24px;
+    }
+
+    .chat-header-left h3 {
+        font-size: 13px;
+        max-width: 150px;
     }
 }
