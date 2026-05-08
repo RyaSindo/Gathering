@@ -29,24 +29,28 @@ cloudinary.config({
     api_secret: process.env.CLOUD_API_SECRET
 });
 
-const { UploadApiErrorResponse } = require('cloudinary').v2;
-
-// Fungsi untuk mengekstrak public_id dari URL Cloudinary
+// ========== FUNGSI EKSTRAK PUBLIC ID DARI URL CLOUDINARY ==========
 function extractPublicIdFromUrl(fileUrl) {
     try {
-        // URL format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/filename.ext
-        // atau https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/filename
-        const parts = fileUrl.split('/upload/');
-        if (parts.length < 2) return null;
+        if (!fileUrl || !fileUrl.includes('cloudinary.com')) return null;
         
-        let path = parts[1];
-        // Hapus version prefix jika ada (v1234567890/)
+        const uploadIndex = fileUrl.indexOf('/upload/');
+        if (uploadIndex === -1) return null;
+        
+        let path = fileUrl.substring(uploadIndex + 8);
         path = path.replace(/^v\d+\//, '');
-        // Hapus ekstensi file (opsional, Cloudinary bisa handle dengan/without ext)
+        
+        const queryIndex = path.indexOf('?');
+        if (queryIndex !== -1) {
+            path = path.substring(0, queryIndex);
+        }
+        
         const lastDot = path.lastIndexOf('.');
         if (lastDot > 0) {
             path = path.substring(0, lastDot);
         }
+        
+        console.log('Extracted public_id:', path);
         return path;
     } catch (error) {
         console.error('Error extracting public_id:', error);
@@ -54,7 +58,39 @@ function extractPublicIdFromUrl(fileUrl) {
     }
 }
 
-// Endpoint untuk menghapus file dari Cloudinary
+// ========== FUNGSI HAPUS FILE DARI CLOUDINARY ==========
+async function deleteFileFromCloudinary(fileUrl) {
+    if (!fileUrl) return { success: false, message: 'No file URL provided' };
+    
+    const publicId = extractPublicIdFromUrl(fileUrl);
+    if (!publicId) {
+        console.log('Could not extract public_id from URL:', fileUrl);
+        return { success: true, message: 'File reference removed (not found in Cloudinary)' };
+    }
+    
+    try {
+        const result = await cloudinary.uploader.destroy(publicId, {
+            resource_type: 'auto',
+            invalidate: true
+        });
+        
+        if (result.result === 'ok') {
+            console.log('File deleted successfully:', publicId);
+            return { success: true, message: 'File deleted from Cloudinary' };
+        } else if (result.result === 'not found') {
+            console.log('File not found in Cloudinary:', publicId);
+            return { success: true, message: 'File already removed' };
+        } else {
+            console.log('Cloudinary delete result:', result);
+            return { success: true, message: 'File reference removed' };
+        }
+    } catch (error) {
+        console.error('Cloudinary deletion error:', error);
+        return { success: false, message: error.message };
+    }
+}
+
+// ========== ENDPOINT HAPUS FILE (OPSIONAL) ==========
 app.delete('/api/delete-file', async (req, res) => {
     try {
         const { fileUrl } = req.body;
@@ -62,49 +98,11 @@ app.delete('/api/delete-file', async (req, res) => {
             return res.status(400).json({ error: 'File URL required' });
         }
         
-        const publicId = extractPublicIdFromUrl(fileUrl);
-        if (!publicId) {
-            console.log('Could not extract public_id from URL:', fileUrl);
-            // Jika tidak bisa extract, tetap anggap sukses (file mungkin sudah tidak ada)
-            return res.json({ success: true, message: 'File reference removed (not found in Cloudinary)' });
-        }
-        
-        console.log('Deleting from Cloudinary:', publicId);
-        
-        const result = await cloudinary.uploader.destroy(publicId, {
-            resource_type: 'auto', // auto detect image/video/raw
-            invalidate: true       // Invalidate cache
-        });
-        
-        if (result.result === 'ok') {
-            console.log('File deleted successfully:', publicId);
-            res.json({ success: true, message: 'File deleted from Cloudinary' });
-        } else if (result.result === 'not found') {
-            console.log('File not found in Cloudinary:', publicId);
-            res.json({ success: true, message: 'File already removed' });
-        } else {
-            console.log('Cloudinary delete result:', result);
-            res.json({ success: true, message: 'File reference removed' });
-        }
+        const result = await deleteFileFromCloudinary(fileUrl);
+        res.json(result);
     } catch (error) {
-        console.error('Error deleting file from Cloudinary:', error);
-        // Tetap kirim success agar pesan tetap terhapus
-        res.json({ success: true, message: 'Message deleted, file may need manual cleanup' });
-    }
-});
-
-app.post('/api/cleanup-files', async (req, res) => {
-    try {
-        // Ambil semua fileUrl dari pesan yang masih ada
-        const messages = await db.collection('messages').find({ fileUrl: { $ne: null } }).toArray();
-        const existingFileUrls = new Set(messages.map(m => m.fileUrl));
-        
-        // Di sini Anda bisa menambahkan logika untuk menghapus file dari Cloudinary
-        // yang tidak terdaftar di database (opsional)
-        
-        res.json({ success: true, message: 'Cleanup completed', existingFiles: existingFileUrls.size });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Error in delete-file endpoint:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -112,10 +110,10 @@ app.post('/api/cleanup-files', async (req, res) => {
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
 
-// ========== KONEKSI MONGODB (DENGAN OPSI TLS UNTUK MENGATASI ERROR SSL) ==========
+// ========== KONEKSI MONGODB ==========
 const client = new MongoClient(process.env.MONGODB_URI, {
-    tlsAllowInvalidCertificates: true,  // Solusi sementara untuk error SSL
-    tlsAllowInvalidHostnames: true,     // Solusi sementara untuk error SSL
+    tlsAllowInvalidCertificates: true,
+    tlsAllowInvalidHostnames: true,
     connectTimeoutMS: 10000,
     serverSelectionTimeoutMS: 30000
 });
@@ -127,7 +125,6 @@ async function connectDB() {
         db = client.db('gathering');
         console.log('✅ MongoDB connected to database: gathering');
         
-        // Buat indeks untuk performa (opsional)
         await db.collection('users').createIndex({ username: 1 }, { unique: true });
         await db.collection('users').createIndex({ email: 1 }, { unique: true });
         await db.collection('messages').createIndex({ channelId: 1, timestamp: -1 });
@@ -162,7 +159,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
                 {
                     folder: 'gathering-app',
                     resource_type: 'auto',
-                    allowed_formats: ['jpg', 'png', 'gif', 'mp4', 'pdf', 'zip', 'txt', 'docx']
+                    allowed_formats: ['jpg', 'png', 'gif', 'mp4', 'pdf', 'zip', 'txt', 'docx', 'webp', 'mov', 'avi', 'mkv']
                 },
                 (error, result) => {
                     if (error) reject(error);
@@ -171,6 +168,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             );
             uploadStream.end(req.file.buffer);
         });
+        
         res.json({
             url: result.secure_url,
             filename: result.public_id,
@@ -266,12 +264,27 @@ app.post('/api/servers', async (req, res) => {
 app.delete('/api/servers/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        
+        // Hapus semua file dari Cloudinary untuk pesan di server ini
+        const channelsInServer = await db.collection('channels').find({ serverId: id }).toArray();
+        const channelIds = channelsInServer.map(c => c.id);
+        const messages = await db.collection('messages').find({ channelId: { $in: channelIds } }).toArray();
+        
+        for (const message of messages) {
+            if (message.fileUrl) {
+                await deleteFileFromCloudinary(message.fileUrl);
+            }
+        }
+        
         await db.collection('servers').deleteOne({ id });
         await db.collection('channels').deleteMany({ serverId: id });
         await db.collection('serverMembers').deleteMany({ serverId: id });
+        await db.collection('messages').deleteMany({ channelId: { $in: channelIds } });
+        
         io.emit('servers-updated', await db.collection('servers').find({}).toArray());
         res.json({ success: true });
     } catch (err) {
+        console.error('Delete server error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -362,12 +375,23 @@ app.post('/api/channels', async (req, res) => {
 app.delete('/api/channels/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        
+        // Hapus semua file dari Cloudinary untuk pesan di channel ini
+        const messages = await db.collection('messages').find({ channelId: id }).toArray();
+        for (const message of messages) {
+            if (message.fileUrl) {
+                await deleteFileFromCloudinary(message.fileUrl);
+            }
+        }
+        
         await db.collection('messages').deleteMany({ channelId: id });
         await db.collection('channels').deleteOne({ id });
+        
         io.emit('channels-updated', await db.collection('channels').find({}).toArray());
         io.emit('messages-updated', await db.collection('messages').find({}).toArray());
         res.json({ success: true });
     } catch (err) {
+        console.error('Delete channel error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -384,7 +408,7 @@ app.get('/api/messages', async (req, res) => {
 
 app.post('/api/messages', async (req, res) => {
     try {
-        const { channelId, userId, username, content, fileUrl, fileType } = req.body;
+        const { channelId, userId, username, content, fileUrl, fileType, originalname, fileSize } = req.body;
         const newMessage = {
             id: generateId(),
             channelId,
@@ -393,6 +417,8 @@ app.post('/api/messages', async (req, res) => {
             content: content || '',
             fileUrl: fileUrl || null,
             fileType: fileType || null,
+            originalname: originalname || null,
+            fileSize: fileSize || null,
             timestamp: new Date().toISOString()
         };
         await db.collection('messages').insertOne(newMessage);
@@ -420,6 +446,7 @@ app.put('/api/messages/:id', async (req, res) => {
     }
 });
 
+// ========== DELETE MESSAGE (DENGAN HAPUS FILE DARI CLOUDINARY) ==========
 app.delete('/api/messages/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -428,18 +455,8 @@ app.delete('/api/messages/:id', async (req, res) => {
         const message = await db.collection('messages').findOne({ id });
         
         if (message && message.fileUrl) {
-            // Hapus file dari Cloudinary
-            try {
-                const publicId = extractPublicIdFromUrl(message.fileUrl);
-                if (publicId) {
-                    console.log('Deleting file from Cloudinary:', publicId);
-                    await cloudinary.uploader.destroy(publicId, { resource_type: 'auto', invalidate: true });
-                    console.log('File deleted from Cloudinary:', publicId);
-                }
-            } catch (cloudinaryError) {
-                console.error('Cloudinary deletion error:', cloudinaryError);
-                // Lanjutkan meskipun gagal hapus dari Cloudinary
-            }
+            console.log('Deleting file from Cloudinary for message:', id);
+            await deleteFileFromCloudinary(message.fileUrl);
         }
         
         // Hapus pesan dari database

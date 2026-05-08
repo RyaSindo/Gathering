@@ -151,7 +151,7 @@ function canDeleteServer(serverId, userId) {
     return isOwner(serverId, userId);
 }
 
-// ============ FUNGSI DELETE MESSAGE ============
+// ============ FUNGSI DELETE MESSAGE (DENGAN KONFIRMASI FILE) ============
 
 async function deleteMessage(messageId) {
     const message = messages.find(m => m.id === messageId);
@@ -162,8 +162,23 @@ async function deleteMessage(messageId) {
         return;
     }
     
-    if (confirm('Hapus pesan ini?')) {
-        await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
+    let confirmMessage = 'Hapus pesan ini?';
+    if (message.fileUrl) {
+        confirmMessage = 'Hapus pesan ini? File yang dilampirkan (gambar/video/dokumen) juga akan dihapus secara permanen!';
+    }
+    
+    if (confirm(confirmMessage)) {
+        try {
+            const response = await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
+            if (response.ok) {
+                showNotification(message.fileUrl ? 'Pesan dan file berhasil dihapus' : 'Pesan berhasil dihapus', 'success');
+            } else {
+                showNotification('Gagal menghapus pesan', 'error');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            showNotification('Error saat menghapus pesan', 'error');
+        }
     }
 }
 
@@ -514,7 +529,7 @@ async function deleteServer(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (!server) return false;
     
-    if (confirm(`Apakah Anda yakin ingin menghapus server "${server.name}"?`)) {
+    if (confirm(`Apakah Anda yakin ingin menghapus server "${server.name}"? Semua channel, pesan, dan file akan hilang permanen!`)) {
         await fetch(`${API_URL}/servers/${serverId}`, { method: 'DELETE' });
         
         const relatedMembers = serverMembers.filter(m => m.serverId === serverId);
@@ -649,7 +664,7 @@ async function deleteChannel(channelId) {
     const channel = channels.find(c => c.id === channelId);
     if (!channel) return;
     
-    if (confirm(`Hapus channel #${channel.name}?`)) {
+    if (confirm(`Hapus channel #${channel.name}? Semua pesan dan file di dalamnya akan hilang permanen!`)) {
         await fetch(`${API_URL}/channels/${channelId}`, { method: 'DELETE' });
         await loadData();
         
