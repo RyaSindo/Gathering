@@ -127,7 +127,7 @@ function canDeleteMessage(message, currentUserId, currentServerId) {
     }
     
     if (currentUserRole === 'moderator') {
-        return messageAuthorRole !== 'owner';
+        return messageAuthorRole !== 'owner' && messageAuthorRole !== 'moderator';
     }
     
     return messageUserId === currentUserId;
