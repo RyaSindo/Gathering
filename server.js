@@ -148,18 +148,22 @@ function generateInviteCode() {
     return code;
 }
 
-// ========== ENDPOINT UPLOAD ==========
+// ========== ENDPOINT UPLOAD - IZINKAN SEMUA FORMAT FILE ==========
 app.post('/api/upload', upload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
     }
+    
     try {
+        // HAPUS allowed_formats - biarkan Cloudinary menerima semua file
         const result = await new Promise((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
                 {
                     folder: 'gathering-app',
-                    resource_type: 'auto',
-                    allowed_formats: ['jpg', 'png', 'gif', 'mp4', 'pdf', 'zip', 'txt', 'docx', 'webp', 'mov', 'avi', 'mkv']
+                    resource_type: 'auto',  // 'auto' akan mendeteksi image/video/raw
+                    // HAPUS allowed_formats atau biarkan kosong agar semua file diterima
+                    use_filename: true,
+                    unique_filename: true
                 },
                 (error, result) => {
                     if (error) reject(error);
@@ -169,14 +173,33 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
             uploadStream.end(req.file.buffer);
         });
         
+        // Tentukan tipe file berdasarkan ekstensi untuk file raw
+        let fileType = req.file.mimetype.split('/')[0];
+        const extension = req.file.originalname.split('.').pop().toLowerCase();
+        
+        // Jika fileType adalah 'application' atau 'text', ubah menjadi 'file'
+        if (fileType === 'application' || fileType === 'text') {
+            fileType = 'file';
+        }
+        
+        // Untuk file dengan ekstensi tertentu, tetap pertahankan tipenya
+        const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+        const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv', 'flv'];
+        
+        if (imageExts.includes(extension)) {
+            fileType = 'image';
+        } else if (videoExts.includes(extension)) {
+            fileType = 'video';
+        }
+        
         res.json({
             url: result.secure_url,
             filename: result.public_id,
             originalname: req.file.originalname,
             size: req.file.size,
-            type: req.file.mimetype.split('/')[0],
+            type: fileType,
             mimetype: req.file.mimetype,
-            extension: req.file.originalname.split('.').pop().toLowerCase()
+            extension: extension
         });
     } catch (err) {
         console.error('Upload error:', err);
@@ -477,6 +500,7 @@ async function startServer() {
     await connectDB();
     server.listen(PORT, () => {
         console.log(`🚀 Server running on http://localhost:${PORT}`);
+        console.log(`📁 Upload: SEMUA format file diterima (docx, xlsx, txt, zip, rar, jar, dll)`);
     });
 }
 
