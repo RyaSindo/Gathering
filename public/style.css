@@ -1115,7 +1115,7 @@ body {
         background-color: #313338;
         border-top: 1px solid #1e1f22;
         padding: 10px 12px;
-        position: relative;
+        position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
