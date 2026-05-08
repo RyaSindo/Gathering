@@ -300,6 +300,15 @@ body {
     color: #3ba55d;
 }
 
+.leave-server-btn:hover {
+    color: #ed4245;
+    background-color: rgba(237, 66, 69, 0.1);
+}
+
+.leave-server-btn i {
+    font-size: 14px;
+}
+
 /* Join Section */
 .join-section {
     padding: 16px;
@@ -516,6 +525,7 @@ body {
     display: flex;
     flex-direction: column;
     background-color: #313338;
+    min-width: 0; /* Penting untuk flex di mobile */
 }
 
 .chat-header {
@@ -1013,6 +1023,7 @@ body {
         transform: translateX(0);
     }
 
+    /* MIDDLE SIDEBAR juga jadi slide menu di mobile */
     .middle-sidebar {
         position: fixed;
         top: 0;
@@ -1103,14 +1114,4 @@ body {
     .auth-box {
         padding: 24px;
     }
-}
-
-/* tombol keluar server */
-.server-actions .leave-server-btn:hover {
-    color: #ed4245;
-    background-color: rgba(237, 66, 69, 0.1);
-}
-
-.server-actions .leave-server-btn i {
-    font-size: 14px;
 }
