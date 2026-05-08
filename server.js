@@ -90,7 +90,7 @@ async function deleteFileFromCloudinary(fileUrl) {
     }
 }
 
-// ========== ENDPOINT HAPUS FILE (OPSIONAL) ==========
+// ========== ENDPOINT HAPUS FILE ==========
 app.delete('/api/delete-file', async (req, res) => {
     try {
         const { fileUrl } = req.body;
@@ -265,7 +265,6 @@ app.delete('/api/servers/:id', async (req, res) => {
     try {
         const { id } = req.params;
         
-        // Hapus semua file dari Cloudinary untuk pesan di server ini
         const channelsInServer = await db.collection('channels').find({ serverId: id }).toArray();
         const channelIds = channelsInServer.map(c => c.id);
         const messages = await db.collection('messages').find({ channelId: { $in: channelIds } }).toArray();
@@ -376,7 +375,6 @@ app.delete('/api/channels/:id', async (req, res) => {
     try {
         const { id } = req.params;
         
-        // Hapus semua file dari Cloudinary untuk pesan di channel ini
         const messages = await db.collection('messages').find({ channelId: id }).toArray();
         for (const message of messages) {
             if (message.fileUrl) {
@@ -451,7 +449,6 @@ app.delete('/api/messages/:id', async (req, res) => {
     try {
         const { id } = req.params;
         
-        // Cari pesan sebelum dihapus untuk mendapatkan fileUrl
         const message = await db.collection('messages').findOne({ id });
         
         if (message && message.fileUrl) {
@@ -459,7 +456,6 @@ app.delete('/api/messages/:id', async (req, res) => {
             await deleteFileFromCloudinary(message.fileUrl);
         }
         
-        // Hapus pesan dari database
         await db.collection('messages').deleteOne({ id });
         
         io.emit('messages-updated', await db.collection('messages').find({}).toArray());

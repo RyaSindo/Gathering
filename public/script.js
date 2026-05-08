@@ -117,19 +117,33 @@ function isModerator(serverId, userId) {
     return member && member.role === 'moderator';
 }
 
+// ============ FUNGSI CEK HAPUS PESAN (DIPERBAIKI) ============
 function canDeleteMessage(message, currentUserId, currentServerId) {
     const messageUserId = message.userId;
     const messageAuthorRole = getUserRoleInServer(currentServerId, messageUserId);
     const currentUserRole = getUserRoleInServer(currentServerId, currentUserId);
     
+    // OWNER: bisa menghapus SEMUA pesan (termasuk owner, moderator, member)
     if (currentUserRole === 'owner') {
         return true;
     }
     
+    // MODERATOR: hanya bisa menghapus pesan dari MEMBER BIASA
+    // Tidak bisa menghapus pesan dari OWNER atau MODERATOR lain
     if (currentUserRole === 'moderator') {
-        return messageAuthorRole !== 'owner' && messageAuthorRole !== 'moderator';
+        // Moderator tidak bisa hapus pesan owner
+        if (messageAuthorRole === 'owner') {
+            return false;
+        }
+        // Moderator tidak bisa hapus pesan moderator lain
+        if (messageAuthorRole === 'moderator') {
+            return false;
+        }
+        // Moderator bisa hapus pesan member
+        return messageAuthorRole === 'member';
     }
     
+    // MEMBER: hanya bisa menghapus pesan sendiri
     return messageUserId === currentUserId;
 }
 
@@ -992,9 +1006,7 @@ function renderMessages() {
             const messageId = btn.dataset.id;
             const message = messages.find(m => m.id === messageId);
             if (message && canDeleteMessage(message, currentUser.id, currentServerId)) {
-                if (confirm('Hapus pesan ini?')) {
-                    await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
-                }
+                await deleteMessage(messageId);
             } else {
                 showNotification('Anda tidak memiliki izin untuk menghapus pesan ini!', 'error');
             }
