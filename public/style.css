@@ -1004,7 +1004,6 @@ body {
 }
 
 /* ============ MOBILE RESPONSIVE ============ */
-/* ============ MOBILE RESPONSIVE ============ */
 @media (max-width: 768px) {
     /* Sembunyikan sidebar di mobile */
     .left-sidebar {
@@ -1046,11 +1045,41 @@ body {
         display: flex;
     }
 
-    /* Chat area full width - PERBAIKAN */
+    /* Chat area - tanpa fixed header */
     .chat-area {
         width: 100%;
-        margin-top: 56px; /* Naikkan 20px dari default (biasanya 36px) */
-        height: calc(100vh - 56px);
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    /* Chat header - tidak fixed */
+    .chat-header {
+        padding: 12px 16px;
+        background-color: #313338;
+        border-bottom: 1px solid #1e1f22;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .chat-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .chat-header-left h3 {
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     /* Mobile menu buttons */
@@ -1058,60 +1087,43 @@ body {
         display: flex;
         align-items: center;
         justify-content: center;
+        background: none;
+        border: none;
+        color: #dbdee1;
+        font-size: 18px;
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
     }
 
-    /* Chat header - PERBAIKAN */
-    .chat-header {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 99;
-        background-color: #313338;
-        padding: 12px 16px;
-        height: 56px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .chat-header-left h3 {
-        font-size: 14px;
-        max-width: 180px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    /* Messages container - disesuaikan dengan fixed header */
-    .messages-container {
-        padding: 12px;
-        padding-top: 16px;
-        height: 100%;
-        overflow-y: auto;
-    }
-
-    /* Message input container - fixed di bottom */
-    .message-input-container {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background-color: #313338;
-        padding: 10px 12px;
-        border-top: 1px solid #1e1f22;
-        z-index: 99;
-    }
-
-    /* File preview area - disesuaikan */
-    .file-preview-area {
-        margin: 0 12px;
-        position: fixed;
-        bottom: 80px;
-        left: 0;
-        right: 0;
-        z-index: 98;
+    .mobile-menu-btn:hover {
         background-color: #2b2d31;
+    }
+
+    /* Messages container - scrollable */
+    .messages-container {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+        padding-bottom: 20px;
+    }
+
+    /* Message input container - tetap di bawah */
+    .message-input-container {
+        flex-shrink: 0;
+        background-color: #313338;
+        border-top: 1px solid #1e1f22;
+        padding: 10px 12px;
+    }
+
+    /* File preview area */
+    .file-preview-area {
+        margin: 0 12px 8px 12px;
+        padding: 8px 12px;
+        background-color: #2b2d31;
+        border-radius: 8px;
+        border-left: 4px solid #5865f2;
     }
 
     .message-file img {
@@ -1146,6 +1158,54 @@ body {
         right: 55px;
         bottom: 12px;
     }
+
+    /* User info di left sidebar mobile */
+    .user-info {
+        padding: 12px;
+    }
+
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .user-details span:first-child {
+        font-size: 13px;
+    }
+
+    /* Server item di mobile */
+    .server-item {
+        padding: 8px 12px;
+    }
+
+    .server-name {
+        font-size: 13px;
+    }
+
+    /* Channel item di mobile */
+    .channel-item {
+        padding: 8px 12px;
+    }
+
+    .channel-name {
+        font-size: 13px;
+    }
+
+    /* Member item di mobile */
+    .member-item {
+        padding: 6px 8px;
+    }
+
+    .member-name {
+        font-size: 12px;
+    }
+
+    .member-avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 10px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1168,5 +1228,11 @@ body {
     .chat-header-left h3 {
         font-size: 13px;
         max-width: 150px;
+    }
+
+    .chat-header-left .mobile-menu-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
     }
 }
