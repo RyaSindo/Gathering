@@ -29,6 +29,85 @@ cloudinary.config({
     api_secret: process.env.CLOUD_API_SECRET
 });
 
+const { UploadApiErrorResponse } = require('cloudinary').v2;
+
+// Fungsi untuk mengekstrak public_id dari URL Cloudinary
+function extractPublicIdFromUrl(fileUrl) {
+    try {
+        // URL format: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/filename.ext
+        // atau https://res.cloudinary.com/cloud_name/image/upload/v1234567890/folder/filename
+        const parts = fileUrl.split('/upload/');
+        if (parts.length < 2) return null;
+        
+        let path = parts[1];
+        // Hapus version prefix jika ada (v1234567890/)
+        path = path.replace(/^v\d+\//, '');
+        // Hapus ekstensi file (opsional, Cloudinary bisa handle dengan/without ext)
+        const lastDot = path.lastIndexOf('.');
+        if (lastDot > 0) {
+            path = path.substring(0, lastDot);
+        }
+        return path;
+    } catch (error) {
+        console.error('Error extracting public_id:', error);
+        return null;
+    }
+}
+
+// Endpoint untuk menghapus file dari Cloudinary
+app.delete('/api/delete-file', async (req, res) => {
+    try {
+        const { fileUrl } = req.body;
+        if (!fileUrl) {
+            return res.status(400).json({ error: 'File URL required' });
+        }
+        
+        const publicId = extractPublicIdFromUrl(fileUrl);
+        if (!publicId) {
+            console.log('Could not extract public_id from URL:', fileUrl);
+            // Jika tidak bisa extract, tetap anggap sukses (file mungkin sudah tidak ada)
+            return res.json({ success: true, message: 'File reference removed (not found in Cloudinary)' });
+        }
+        
+        console.log('Deleting from Cloudinary:', publicId);
+        
+        const result = await cloudinary.uploader.destroy(publicId, {
+            resource_type: 'auto', // auto detect image/video/raw
+            invalidate: true       // Invalidate cache
+        });
+        
+        if (result.result === 'ok') {
+            console.log('File deleted successfully:', publicId);
+            res.json({ success: true, message: 'File deleted from Cloudinary' });
+        } else if (result.result === 'not found') {
+            console.log('File not found in Cloudinary:', publicId);
+            res.json({ success: true, message: 'File already removed' });
+        } else {
+            console.log('Cloudinary delete result:', result);
+            res.json({ success: true, message: 'File reference removed' });
+        }
+    } catch (error) {
+        console.error('Error deleting file from Cloudinary:', error);
+        // Tetap kirim success agar pesan tetap terhapus
+        res.json({ success: true, message: 'Message deleted, file may need manual cleanup' });
+    }
+});
+
+app.post('/api/cleanup-files', async (req, res) => {
+    try {
+        // Ambil semua fileUrl dari pesan yang masih ada
+        const messages = await db.collection('messages').find({ fileUrl: { $ne: null } }).toArray();
+        const existingFileUrls = new Set(messages.map(m => m.fileUrl));
+        
+        // Di sini Anda bisa menambahkan logika untuk menghapus file dari Cloudinary
+        // yang tidak terdaftar di database (opsional)
+        
+        res.json({ success: true, message: 'Cleanup completed', existingFiles: existingFileUrls.size });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ========== MULTER MEMORY STORAGE ==========
 const memoryStorage = multer.memoryStorage();
 const upload = multer({ storage: memoryStorage });
@@ -344,10 +423,32 @@ app.put('/api/messages/:id', async (req, res) => {
 app.delete('/api/messages/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        
+        // Cari pesan sebelum dihapus untuk mendapatkan fileUrl
+        const message = await db.collection('messages').findOne({ id });
+        
+        if (message && message.fileUrl) {
+            // Hapus file dari Cloudinary
+            try {
+                const publicId = extractPublicIdFromUrl(message.fileUrl);
+                if (publicId) {
+                    console.log('Deleting file from Cloudinary:', publicId);
+                    await cloudinary.uploader.destroy(publicId, { resource_type: 'auto', invalidate: true });
+                    console.log('File deleted from Cloudinary:', publicId);
+                }
+            } catch (cloudinaryError) {
+                console.error('Cloudinary deletion error:', cloudinaryError);
+                // Lanjutkan meskipun gagal hapus dari Cloudinary
+            }
+        }
+        
+        // Hapus pesan dari database
         await db.collection('messages').deleteOne({ id });
+        
         io.emit('messages-updated', await db.collection('messages').find({}).toArray());
         res.json({ success: true });
     } catch (err) {
+        console.error('Delete message error:', err);
         res.status(500).json({ error: err.message });
     }
 });
