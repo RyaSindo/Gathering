@@ -98,7 +98,7 @@ function getFileIcon(filename) {
     return iconMap[ext] || 'fa-file';
 }
 
-// FUNGSI UNTUK CEK OWNER DAN ROLE
+// ============ FUNGSI UNTUK CEK OWNER DAN ROLE ============
 
 function getUserRoleInServer(serverId, userId) {
     const member = serverMembers.find(m => m.serverId === serverId && m.userId === userId);
@@ -117,58 +117,46 @@ function isModerator(serverId, userId) {
     return member && member.role === 'moderator';
 }
 
-// Cek user bisa hapus chat
 function canDeleteMessage(message, currentUserId, currentServerId) {
     const messageUserId = message.userId;
     const messageAuthorRole = getUserRoleInServer(currentServerId, messageUserId);
     const currentUserRole = getUserRoleInServer(currentServerId, currentUserId);
     
-    // Owner: bisa menghapus semua pesan (termasuk owner sendiri)
     if (currentUserRole === 'owner') {
         return true;
     }
     
-    // Moderator: bisa menghapus pesan dari member dan moderator (tidak bisa owner)
     if (currentUserRole === 'moderator') {
         return messageAuthorRole !== 'owner';
     }
     
-    // Member: hanya bisa menghapus pesan sendiri
     return messageUserId === currentUserId;
 }
 
-// Cek apakah user bisa membuat channel
 function canCreateChannel(serverId, userId) {
     const userRole = getUserRoleInServer(serverId, userId);
-    // Owner dan moderator bisa membuat channel
     return userRole === 'owner' || userRole === 'moderator';
 }
 
-// Cek apakah user bisa menghapus channel
 function canDeleteChannel(serverId, userId) {
     const userRole = getUserRoleInServer(serverId, userId);
-    // Hanya owner yang bisa menghapus channel
     return userRole === 'owner' || userRole === 'moderator';
 }
 
-// Cek apakah user bisa mengelola member (ubah role)
 function canManageMembers(serverId, userId) {
-    // Hanya owner yang bisa mengubah role member
     return isOwner(serverId, userId);
 }
 
-// Cek apakah user bisa menghapus server
 function canDeleteServer(serverId, userId) {
-    // Hanya owner yang bisa menghapus server
     return isOwner(serverId, userId);
 }
 
-// delete massage
+// ============ FUNGSI DELETE MESSAGE ============
+
 async function deleteMessage(messageId) {
     const message = messages.find(m => m.id === messageId);
     if (!message) return;
     
-    // Cek permission sebelum menghapus
     if (!canDeleteMessage(message, currentUser.id, currentServerId)) {
         showNotification('Anda tidak memiliki izin untuk menghapus pesan ini!', 'error');
         return;
@@ -176,13 +164,10 @@ async function deleteMessage(messageId) {
     
     if (confirm('Hapus pesan ini?')) {
         await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
-        // Pesan akan terupdate via socket
     }
 }
 
-// 
-
-// FILE PREVIEW AREA
+// ============ FILE PREVIEW AREA ============
 
 function showPreviewArea(file, fileType, previewUrl) {
     const previewArea = document.getElementById('filePreviewArea');
@@ -258,7 +243,8 @@ function clearFilePreview() {
     pendingFileSize = null;
 }
 
-// Upload file and show preview
+// ============ UPLOAD FILE ============
+
 async function uploadFileAndPreview(file) {
     console.log('Uploading file:', file.name, file.type);
     
@@ -315,10 +301,10 @@ async function uploadFileAndPreview(file) {
         showNotification('Error upload: ' + error.message, 'error');
         clearFilePreview();
     }
-
 }
 
-// Send message with file
+// ============ SEND MESSAGE ============
+
 async function sendMessageWithFile(content, fileUrl, fileType, originalname = null, fileSize = null) {
     if (!currentChannelId) {
         showNotification('Pilih channel terlebih dahulu', 'error');
@@ -360,7 +346,6 @@ async function sendMessage(content) {
         return;
     }
     
-    // Cek apakah ada GIF URL dalam pesan
     const gifUrl = detectGifUrl(content);
     if (gifUrl && !pendingFile) {
         await sendMessageWithFile('', gifUrl, 'gif');
@@ -369,7 +354,6 @@ async function sendMessage(content) {
         return;
     }
     
-    // Kirim pesan dengan file yang sudah diupload
     if (pendingFile && pendingFileUrl) {
         const success = await sendMessageWithFile(content, pendingFileUrl, pendingFileType, pendingFileOriginalName, pendingFileSize);
         if (success) {
@@ -389,7 +373,8 @@ async function sendMessage(content) {
     document.getElementById('messageInput').focus();
 }
 
-// API Functions
+// ============ API FUNCTIONS ============
+
 async function loadData() {
     try {
         const [usersRes, serversRes, membersRes, channelsRes, messagesRes] = await Promise.all([
@@ -480,6 +465,8 @@ function getUserServers() {
     return servers.filter(s => userMemberships.some(m => m.serverId === s.id));
 }
 
+// ============ SERVER FUNCTIONS ============
+
 async function createServer(name) {
     const response = await fetch(`${API_URL}/servers`, {
         method: 'POST',
@@ -496,7 +483,6 @@ async function createServer(name) {
             body: JSON.stringify({ serverId: newServer.id, userId: currentUser.id })
         });
         
-        // Update role menjadi owner
         const ownerMember = serverMembers.find(m => m.serverId === newServer.id && m.userId === currentUser.id);
         if (ownerMember) {
             await fetch(`${API_URL}/serverMembers/${ownerMember.id}`, {
@@ -520,7 +506,7 @@ async function createServer(name) {
 }
 
 async function deleteServer(serverId) {
-    if (!isOwner(serverId, currentUser.id)) {
+    if (!canDeleteServer(serverId, currentUser.id)) {
         showNotification('Hanya owner yang bisa menghapus server!', 'error');
         return false;
     }
@@ -589,7 +575,60 @@ async function joinServer(inviteCode) {
     return { success: true, server };
 }
 
+async function leaveServer(serverId) {
+    const server = servers.find(s => s.id === serverId);
+    if (!server) {
+        showNotification('Server tidak ditemukan!', 'error');
+        return false;
+    }
+    
+    if (isOwner(serverId, currentUser.id)) {
+        showNotification('Owner tidak bisa keluar dari server. Jika ingin menghapus server, gunakan tombol hapus server.', 'error');
+        return false;
+    }
+    
+    const isMember = serverMembers.some(m => m.serverId === serverId && m.userId === currentUser.id);
+    if (!isMember) {
+        showNotification('Anda bukan member server ini!', 'error');
+        return false;
+    }
+    
+    if (confirm(`Apakah Anda yakin ingin keluar dari server "${server.name}"?`)) {
+        const memberRecord = serverMembers.find(m => m.serverId === serverId && m.userId === currentUser.id);
+        
+        if (memberRecord) {
+            await fetch(`${API_URL}/serverMembers/${memberRecord.id}`, { method: 'DELETE' });
+            await loadData();
+            
+            if (currentServerId === serverId) {
+                const userServers = getUserServers();
+                if (userServers.length > 0) {
+                    selectServer(userServers[0].id);
+                } else {
+                    currentServerId = null;
+                    currentChannelId = null;
+                    renderServers();
+                    renderChannels();
+                    renderMessages();
+                    updateServerInfo();
+                }
+            }
+            
+            showNotification(`Anda telah keluar dari server "${server.name}"`, 'success');
+            return true;
+        }
+    }
+    return false;
+}
+
+// ============ CHANNEL FUNCTIONS ============
+
 async function addChannel(serverId, name) {
+    if (!canCreateChannel(serverId, currentUser.id)) {
+        showNotification('Anda tidak memiliki izin untuk membuat channel!', 'error');
+        return;
+    }
+    
     await fetch(`${API_URL}/channels`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -601,11 +640,9 @@ async function addChannel(serverId, name) {
     showNotification(`Channel #${name} dibuat`, 'success');
 }
 
-
-// delete channel
 async function deleteChannel(channelId) {
     if (!canDeleteChannel(currentServerId, currentUser.id)) {
-        showNotification('Hanya owner yang bisa menghapus channel!', 'error');
+        showNotification('Anda tidak memiliki izin untuk menghapus channel!', 'error');
         return;
     }
     
@@ -635,7 +672,7 @@ async function updateMemberRole(memberId, newRole) {
     const member = serverMembers.find(m => m.id === memberId);
     if (!member) return;
     
-    if (!isOwner(member.serverId, currentUser.id)) {
+    if (!canManageMembers(member.serverId, currentUser.id)) {
         showNotification('Hanya owner yang bisa mengatur role member!', 'error');
         return;
     }
@@ -656,7 +693,8 @@ async function updateMemberRole(memberId, newRole) {
     showNotification(`Role member berhasil diubah menjadi ${newRole}`, 'success');
 }
 
-// Render Functions
+// ============ RENDER FUNCTIONS ============
+
 function renderServers() {
     const container = document.getElementById('serverList');
     if (!container) return;
@@ -677,6 +715,7 @@ function renderServers() {
         div.innerHTML = `
             <div class="server-name">
                 ${escapeHtml(server.name)}
+                ${isUserOwner ? ' <span class="owner-badge">👑</span>' : ''}
             </div>
             <div class="server-actions">
                 <button class="invite-server" data-id="${server.id}" title="Undang Teman">
@@ -703,7 +742,6 @@ function renderServers() {
         container.appendChild(div);
     });
     
-    // Event listeners untuk tombol invite
     document.querySelectorAll('.invite-server').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -712,7 +750,6 @@ function renderServers() {
         });
     });
     
-    // Event listeners untuk tombol hapus server (owner)
     document.querySelectorAll('.delete-server-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -720,7 +757,6 @@ function renderServers() {
         });
     });
     
-    // Event listeners untuk tombol keluar server (non-owner)
     document.querySelectorAll('.leave-server-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -735,13 +771,6 @@ function selectServer(serverId) {
     renderServers();
     updateServerInfo();
     clearFilePreview();
-    
-    // Update mobile header title
-    const mobileServerName = document.getElementById('mobileServerName');
-    const server = servers.find(s => s.id === serverId);
-    if (mobileServerName && server) {
-        mobileServerName.textContent = server.name;
-    }
     
     const serverChannels = channels.filter(c => c.serverId === serverId);
     if (serverChannels.length > 0) {
@@ -783,7 +812,13 @@ function renderChannels() {
     }
     
     const serverChannels = channels.filter(c => c.serverId === currentServerId);
-    const canDelete = isOwner(currentServerId, currentUser.id);
+    const canDelete = canDeleteChannel(currentServerId, currentUser.id);
+    const canCreate = canCreateChannel(currentServerId, currentUser.id);
+    
+    const addChannelBtn = document.getElementById('addChannelBtn');
+    if (addChannelBtn) {
+        addChannelBtn.style.display = canCreate ? 'flex' : 'none';
+    }
     
     if (serverChannels.length === 0) {
         container.innerHTML = '<div style="padding: 12px; text-align: center; color: #949ba4;"><i class="fas fa-hashtag"></i> Tidak ada channel</div>';
@@ -819,7 +854,11 @@ function renderChannels() {
     document.querySelectorAll('.delete-channel-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            deleteChannel(btn.dataset.id);
+            if (canDeleteChannel(currentServerId, currentUser.id)) {
+                deleteChannel(btn.dataset.id);
+            } else {
+                showNotification('Anda tidak memiliki izin untuk menghapus channel!', 'error');
+            }
         });
     });
 }
@@ -860,20 +899,15 @@ function renderMessages() {
         const date = new Date(msg.timestamp);
         const timeStr = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
         
-        // Cek user role
         const canDelete = canDeleteMessage(msg, currentUser.id, currentServerId);
 
         let fileHtml = '';
         if (msg.fileUrl) {
-            // GUNAKAN NAMA ASLI FILE dari database
             let fileName = msg.originalname;
             
-            // Fallback jika originalname tidak ada (data lama)
             if (!fileName || fileName === 'file' || fileName === 'Download') {
-                // Ambil dari URL sebagai fallback
                 const urlParts = msg.fileUrl.split('/');
                 fileName = urlParts[urlParts.length - 1] || 'file';
-                // Hapus timestamp dan random prefix jika ada
                 const match = fileName.match(/^\d+-\w+-(.+)$/);
                 if (match) {
                     fileName = match[1];
@@ -920,7 +954,6 @@ function renderMessages() {
                     <button class="delete-msg" data-id="${msg.id}"><i class="fas fa-trash"></i> Hapus</button>
                 </div>
             ` : ''}
-                
         `;
         
         container.appendChild(div);
@@ -956,89 +989,6 @@ function renderMessages() {
     container.scrollTop = container.scrollHeight;
 }
 
-// ls fungsi
-function renderChannels() {
-    const container = document.getElementById('channelList');
-    if (!container) return;
-    
-    if (!currentServerId) {
-        container.innerHTML = '<div style="padding: 12px; text-align: center; color: #949ba4;"><i class="fas fa-hashtag"></i> Pilih server</div>';
-        return;
-    }
-    
-    const serverChannels = channels.filter(c => c.serverId === currentServerId);
-    const canDelete = canDeleteChannel(currentServerId, currentUser.id);
-    const canCreate = canCreateChannel(currentServerId, currentUser.id);
-    
-    // Tampilkan/hide tombol add channel berdasarkan permission
-    const addChannelBtn = document.getElementById('addChannelBtn');
-    if (addChannelBtn) {
-        addChannelBtn.style.display = canCreate ? 'block' : 'none';
-    }
-    
-    if (serverChannels.length === 0) {
-        container.innerHTML = '<div style="padding: 12px; text-align: center; color: #949ba4;"><i class="fas fa-hashtag"></i> Tidak ada channel</div>';
-        return;
-    }
-    
-    container.innerHTML = '';
-    serverChannels.forEach(channel => {
-        const div = document.createElement('div');
-        div.className = `channel-item ${currentChannelId === channel.id ? 'active' : ''}`;
-        div.innerHTML = `
-            <div class="channel-name">
-                <i class="fas fa-hashtag"></i> ${escapeHtml(channel.name)}
-            </div>
-            ${canDelete ? `
-                <div class="channel-actions">
-                    <button class="delete-channel-btn" data-id="${channel.id}" title="Hapus Channel">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            ` : ''}
-        `;
-        
-        div.addEventListener('click', (e) => {
-            if (!e.target.closest('.channel-actions')) {
-                selectChannel(channel.id);
-            }
-        });
-        
-        container.appendChild(div);
-    });
-    
-    document.querySelectorAll('.delete-channel-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (canDeleteChannel(currentServerId, currentUser.id)) {
-                deleteChannel(btn.dataset.id);
-            } else {
-                showNotification('Hanya owner yang bisa menghapus channel!', 'error');
-            }
-        });
-    });
-}
-
-// add channel fungsi
-async function addChannel(serverId, name) {
-    // Cek permission sebelum membuat channel
-    if (!canCreateChannel(serverId, currentUser.id)) {
-        showNotification('Anda tidak memiliki izin untuk membuat channel!', 'error');
-        return;
-    }
-    
-    await fetch(`${API_URL}/channels`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serverId, name })
-    });
-    
-    await loadData();
-    renderChannels();
-    showNotification(`Channel #${name} dibuat`, 'success');
-}
-
-// render members fungsi
 function renderMembers() {
     const container = document.getElementById('membersList');
     if (!container) return;
@@ -1065,9 +1015,9 @@ function renderMembers() {
             
             let roleBadge = '';
             if (isMemberOwner) {
-                roleBadge = '<span class="owner-badge">👑</span>';
+                roleBadge = '<span class="owner-badge">👑 Owner</span>';
             } else if (isMemberModerator) {
-                roleBadge = '<span class="moderator-badge">🛡️</span>';
+                roleBadge = '<span class="moderator-badge">🛡️ Mod</span>';
             }
             
             const div = document.createElement('div');
@@ -1121,7 +1071,8 @@ function closeModals() {
     });
 }
 
-// Setup Emoji Picker
+// ============ SETUP FUNCTIONS ============
+
 function setupEmojiPicker() {
     const emojis = ['😀', '😂', '🥰', '😎', '🤔', '😢', '😡', '👍', '🙏', '💀', '❤️', '🎉', '🔥', '✨', '⭐', '💯', '👋', '🙌', '🤝', '💪', '🧠', '👀', '💡', '🔑', '📚', '🎮', '⚽', '🏀', '🎵', '🎨'];
     
@@ -1146,7 +1097,6 @@ function setupEmojiPicker() {
     });
 }
 
-// Setup File Upload
 function setupFileUpload() {
     const fileInput = document.getElementById('fileInput');
     if (!fileInput) return;
@@ -1175,24 +1125,34 @@ function setupFileUpload() {
     });
 }
 
-// Mobile Menu Functions
 function initMobileMenu() {
-    const leftSidebar = document.getElementById('leftSidebar');
-    const rightSidebar = document.getElementById('rightSidebar');
-    const toggleLeftBtn = document.getElementById('toggleLeftMenu');
-    const toggleRightBtn = document.getElementById('toggleRightMenu');
-    const closeLeftBtn = document.getElementById('closeLeftMenu');
-    const closeRightBtn = document.getElementById('closeRightMenu');
+    const leftSidebar = document.querySelector('.left-sidebar');
+    const middleSidebar = document.querySelector('.middle-sidebar');
+    const openLeftBtn = document.getElementById('openLeftMenuBtn');
+    const openMiddleBtn = document.getElementById('openMiddleMenuBtn');
+    const openMembersBtn = document.getElementById('openMembersBtn');
+    const closeLeftBtn = document.getElementById('closeLeftSidebar');
+    const closeMiddleBtn = document.getElementById('closeMiddleSidebar');
     
-    if (toggleLeftBtn) {
-        toggleLeftBtn.addEventListener('click', () => {
+    if (openLeftBtn) {
+        openLeftBtn.addEventListener('click', () => {
             leftSidebar.classList.add('open');
         });
     }
     
-    if (toggleRightBtn) {
-        toggleRightBtn.addEventListener('click', () => {
-            rightSidebar.classList.add('open');
+    if (openMiddleBtn) {
+        openMiddleBtn.addEventListener('click', () => {
+            middleSidebar.classList.add('open');
+        });
+    }
+    
+    if (openMembersBtn) {
+        openMembersBtn.addEventListener('click', () => {
+            middleSidebar.classList.add('open');
+            const membersSection = document.querySelector('.members-section');
+            if (membersSection) {
+                membersSection.scrollIntoView();
+            }
         });
     }
     
@@ -1202,31 +1162,30 @@ function initMobileMenu() {
         });
     }
     
-    if (closeRightBtn) {
-        closeRightBtn.addEventListener('click', () => {
-            rightSidebar.classList.remove('open');
+    if (closeMiddleBtn) {
+        closeMiddleBtn.addEventListener('click', () => {
+            middleSidebar.classList.remove('open');
         });
     }
     
-    // Close menus when clicking outside (for mobile)
     document.addEventListener('click', (e) => {
         if (window.innerWidth <= 768) {
             if (leftSidebar && leftSidebar.classList.contains('open')) {
-                if (!leftSidebar.contains(e.target) && !toggleLeftBtn.contains(e.target)) {
+                if (!leftSidebar.contains(e.target) && !openLeftBtn.contains(e.target)) {
                     leftSidebar.classList.remove('open');
                 }
             }
-            
-            if (rightSidebar && rightSidebar.classList.contains('open')) {
-                if (!rightSidebar.contains(e.target) && !toggleRightBtn.contains(e.target)) {
-                    rightSidebar.classList.remove('open');
+            if (middleSidebar && middleSidebar.classList.contains('open')) {
+                if (!middleSidebar.contains(e.target) && !openMiddleBtn.contains(e.target) && !openMembersBtn.contains(e.target)) {
+                    middleSidebar.classList.remove('open');
                 }
             }
         }
     });
 }
 
-// Socket.IO Real-time Events
+// ============ SOCKET.IO EVENTS ============
+
 function setupSocketEvents() {
     socket.on('servers-updated', async (updatedServers) => {
         servers = updatedServers;
@@ -1268,7 +1227,8 @@ function setupSocketEvents() {
     });
 }
 
-// Initialize App
+// ============ INITIALIZE APP ============
+
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('App initializing...');
     await loadData();
@@ -1423,6 +1383,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showNotification('Pilih server terlebih dahulu', 'error');
                 return;
             }
+            
+            if (!canCreateChannel(currentServerId, currentUser.id)) {
+                showNotification('Anda tidak memiliki izin untuk membuat channel!', 'error');
+                return;
+            }
+            
             document.getElementById('channelModal').style.display = 'flex';
             document.getElementById('channelName').value = '';
         });
@@ -1543,132 +1509,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.classList.contains('modal')) closeModals();
     });
 });
-
-// Mobile Menu Functions
-function initMobileMenu() {
-    const leftSidebar = document.querySelector('.left-sidebar');
-    const middleSidebar = document.querySelector('.middle-sidebar');
-    const openLeftBtn = document.getElementById('openLeftMenuBtn');
-    const openMiddleBtn = document.getElementById('openMiddleMenuBtn');
-    const openMembersBtn = document.getElementById('openMembersBtn');
-    const closeLeftBtn = document.getElementById('closeLeftSidebar');
-    const closeMiddleBtn = document.getElementById('closeMiddleSidebar');
-    
-    // Buka left sidebar (Servers)
-    if (openLeftBtn) {
-        openLeftBtn.addEventListener('click', () => {
-            leftSidebar.classList.add('open');
-        });
-    }
-    
-    // Buka middle sidebar (Channels)
-    if (openMiddleBtn) {
-        openMiddleBtn.addEventListener('click', () => {
-            middleSidebar.classList.add('open');
-        });
-    }
-    
-    // Buka members (gunakan middle sidebar untuk menampilkan members)
-    if (openMembersBtn) {
-        openMembersBtn.addEventListener('click', () => {
-            // On mobile, members are in middle sidebar
-            middleSidebar.classList.add('open');
-            // Scroll to members section
-            const membersSection = document.querySelector('.members-section');
-            if (membersSection) {
-                membersSection.scrollIntoView();
-            }
-        });
-    }
-    
-    // Tutup left sidebar
-    if (closeLeftBtn) {
-        closeLeftBtn.addEventListener('click', () => {
-            leftSidebar.classList.remove('open');
-        });
-    }
-    
-    // Tutup middle sidebar
-    if (closeMiddleBtn) {
-        closeMiddleBtn.addEventListener('click', () => {
-            middleSidebar.classList.remove('open');
-        });
-    }
-    
-    // Tutup menu saat klik di luar
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth <= 768) {
-            if (leftSidebar && leftSidebar.classList.contains('open')) {
-                if (!leftSidebar.contains(e.target) && !openLeftBtn.contains(e.target)) {
-                    leftSidebar.classList.remove('open');
-                }
-            }
-            if (middleSidebar && middleSidebar.classList.contains('open')) {
-                if (!middleSidebar.contains(e.target) && !openMiddleBtn.contains(e.target) && !openMembersBtn.contains(e.target)) {
-                    middleSidebar.classList.remove('open');
-                }
-            }
-        }
-    });
-}
-
-// Fungsi Keluar dari Server
-async function leaveServer(serverId) {
-    const server = servers.find(s => s.id === serverId);
-    if (!server) {
-        showNotification('Server tidak ditemukan!', 'error');
-        return false;
-    }
-    
-    // Cek apakah user adalah owner (owner tidak bisa keluar, harus hapus server)
-    if (isOwner(serverId, currentUser.id)) {
-        showNotification('Owner tidak bisa keluar dari server. Jika ingin menghapus server, gunakan tombol hapus server.', 'error');
-        return false;
-    }
-    
-    // Cek apakah user benar-benar member server ini
-    const isMember = serverMembers.some(m => m.serverId === serverId && m.userId === currentUser.id);
-    if (!isMember) {
-        showNotification('Anda bukan member server ini!', 'error');
-        return false;
-    }
-    
-    if (confirm(`Apakah Anda yakin ingin keluar dari server "${server.name}"?`)) {
-        // Cari record member
-        const memberRecord = serverMembers.find(m => m.serverId === serverId && m.userId === currentUser.id);
-        
-        if (memberRecord) {
-            await fetch(`${API_URL}/serverMembers/${memberRecord.id}`, { method: 'DELETE' });
-            await loadData();
-            
-            // Jika server yang ditinggalkan adalah server yang sedang aktif
-            if (currentServerId === serverId) {
-                const userServers = getUserServers();
-                if (userServers.length > 0) {
-                    // Pilih server pertama yang tersedia
-                    selectServer(userServers[0].id);
-                } else {
-                    // Tidak ada server tersisa
-                    currentServerId = null;
-                    currentChannelId = null;
-                    renderServers();
-                    renderChannels();
-                    renderMessages();
-                    updateServerInfo();
-                    
-                    // Sembunyikan member sidebar
-                    const memberSidebar = document.getElementById('memberSidebar');
-                    if (memberSidebar) memberSidebar.classList.add('hidden');
-                    
-                    // Update mobile header
-                    const mobileServerName = document.getElementById('mobileServerName');
-                    if (mobileServerName) mobileServerName.textContent = 'Discord';
-                }
-            }
-            
-            showNotification(`Anda telah keluar dari server "${server.name}"`, 'success');
-            return true;
-        }
-    }
-    return false;
-}

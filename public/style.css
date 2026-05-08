@@ -1023,7 +1023,6 @@ body {
         transform: translateX(0);
     }
 
-    /* Aktifkan middle sidebar untuk mobile */
     .middle-sidebar {
         position: fixed;
         top: 0;
@@ -1045,15 +1044,16 @@ body {
         display: flex;
     }
 
-    /* Chat area - tanpa fixed header */
+    /* Chat area */
     .chat-area {
         width: 100%;
         display: flex;
         flex-direction: column;
         height: 100vh;
+        position: relative;
     }
 
-    /* Chat header - tidak fixed */
+    /* Chat header - tetap di atas */
     .chat-header {
         padding: 12px 16px;
         background-color: #313338;
@@ -1101,20 +1101,24 @@ body {
         background-color: #2b2d31;
     }
 
-    /* Messages container - scrollable */
+    /* Messages container - scrollable, dengan padding bottom */
     .messages-container {
         flex: 1;
         overflow-y: auto;
         padding: 12px;
-        padding-bottom: 20px;
+        padding-bottom: 80px; /* Beri ruang untuk input container */
     }
 
-    /* Message input container - tetap di bawah */
+    /* Message input container - TIDAK FIXED, mengikuti flow */
     .message-input-container {
         flex-shrink: 0;
         background-color: #313338;
         border-top: 1px solid #1e1f22;
         padding: 10px 12px;
+        position: relative;
+        bottom: 0;
+        left: 0;
+        right: 0;
     }
 
     /* File preview area */
@@ -1124,6 +1128,11 @@ body {
         background-color: #2b2d31;
         border-radius: 8px;
         border-left: 4px solid #5865f2;
+    }
+
+    /* Saat keyboard muncul di mobile, scroll ke pesan terbaru */
+    .messages-container:focus-within {
+        scroll-behavior: smooth;
     }
 
     .message-file img {
@@ -1158,54 +1167,6 @@ body {
         right: 55px;
         bottom: 12px;
     }
-
-    /* User info di left sidebar mobile */
-    .user-info {
-        padding: 12px;
-    }
-
-    .user-avatar {
-        width: 36px;
-        height: 36px;
-        font-size: 16px;
-    }
-
-    .user-details span:first-child {
-        font-size: 13px;
-    }
-
-    /* Server item di mobile */
-    .server-item {
-        padding: 8px 12px;
-    }
-
-    .server-name {
-        font-size: 13px;
-    }
-
-    /* Channel item di mobile */
-    .channel-item {
-        padding: 8px 12px;
-    }
-
-    .channel-name {
-        font-size: 13px;
-    }
-
-    /* Member item di mobile */
-    .member-item {
-        padding: 6px 8px;
-    }
-
-    .member-name {
-        font-size: 12px;
-    }
-
-    .member-avatar {
-        width: 24px;
-        height: 24px;
-        font-size: 10px;
-    }
 }
 
 @media (max-width: 480px) {
@@ -1230,9 +1191,7 @@ body {
         max-width: 150px;
     }
 
-    .chat-header-left .mobile-menu-btn {
-        width: 28px;
-        height: 38px;
-        font-size: 16px;
+    .messages-container {
+        padding-bottom: 70px;
     }
 }
