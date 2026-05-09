@@ -766,7 +766,6 @@ function renderServers() {
         div.innerHTML = `
             <div class="server-name">
                 ${escapeHtml(server.name)}
-                ${isUserOwner ? ' <span class="owner-badge">👑</span>' : ''}
             </div>
             <div class="server-actions">
                 <button class="invite-server" data-id="${server.id}" title="Undang Teman">
