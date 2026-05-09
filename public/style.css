@@ -1037,7 +1037,7 @@ body {
     }
 
     .middle-sidebar.open {
-        transform: translateX(125%);
+        transform: translateX(25%);
     }
 
     .mobile-sidebar-header {
