@@ -1030,7 +1030,7 @@ body {
         bottom: 0;
         width: 280px;
         z-index: 300;
-        transform: translateX(110%);
+        transform: translateX(125%);
         transition: transform 0.3s ease;
         border-right: none;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
