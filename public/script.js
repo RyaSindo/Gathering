@@ -928,6 +928,32 @@ function renderMessages() {
         const date = new Date(msg.timestamp);
         const timeStr = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
         
+            // Urutkan pesan berdasarkan timestamp
+    const sortedMessages = [...channelMessages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    if (sortedMessages.length === 0) {
+        container.innerHTML = '<div class="welcome-message"><i class="fas fa-comment-dots" style="font-size: 48px; margin-bottom: 20px;"></i><h2>Belum ada pesan</h2><p>Kirim pesan pertama!</p></div>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    
+    let lastDate = null;
+    
+    sortedMessages.forEach(msg => {
+        const msgDate = new Date(msg.timestamp);
+        const currentDateStr = getDateString(msgDate);
+        
+        // Tambahkan pembatas tanggal jika berganti hari
+        if (lastDate !== currentDateStr) {
+            container.insertAdjacentHTML('beforeend', renderDateSeparator(msgDate));
+            lastDate = currentDateStr;
+        }
+        
+        const div = document.createElement('div');
+        div.className = 'message';
+        const timeStr = msgDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
         const canDelete = canDeleteMessage(msg, currentUser.id, currentServerId);
 
         let fileHtml = '';
@@ -1536,3 +1562,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.classList.contains('modal')) closeModals();
     });
 });
+
+// Pembeda hari
+function formatDateHeader(date) {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    
+    const dayName = days[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${dayName}, ${day} ${month} ${year}`;
+}
+
+function getDateString(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function shouldAddDateSeparator(prevMessageDate, currentMessageDate) {
+    if (!prevMessageDate) return true; // Pesan pertama dalam channel
+    return getDateString(prevMessageDate) !== getDateString(currentMessageDate);
+}
+
+function renderDateSeparator(date) {
+    const dateString = formatDateHeader(date);
+    return `
+        <div class="date-separator">
+            <div class="date-separator-line"></div>
+            <div class="date-separator-text">${dateString}</div>
+            <div class="date-separator-line"></div>
+        </div>
+    `;
+}
