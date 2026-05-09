@@ -25,6 +25,159 @@ let pendingFileObject = null;
 let pendingFileOriginalName = null;
 let pendingFileSize = null;
 
+// User Profiles
+let userProfiles = {};
+
+// ============ FUNGSI PROFIL ============
+
+// Load user profiles from localStorage
+function loadUserProfiles() {
+    const saved = localStorage.getItem('user_profiles');
+    if (saved) {
+        userProfiles = JSON.parse(saved);
+    }
+}
+
+// Save user profiles to localStorage
+function saveUserProfiles() {
+    localStorage.setItem('user_profiles', JSON.stringify(userProfiles));
+}
+
+// Get user profile
+function getUserProfile(userId) {
+    const idStr = String(userId);
+    if (!userProfiles[idStr]) {
+        userProfiles[idStr] = {
+            displayName: idStr,
+            bio: 'Pecinta film 🎬',
+            avatar: idStr.charAt(0).toUpperCase(),
+            avatarUrl: null,
+            memberSince: new Date().toISOString()
+        };
+        saveUserProfiles();
+    }
+    return userProfiles[idStr];
+}
+
+// Update user profile
+async function updateUserProfile(userId, data) {
+    const idStr = String(userId);
+    if (!userProfiles[idStr]) {
+        getUserProfile(userId);
+    }
+    
+    if (data.displayName !== undefined) userProfiles[idStr].displayName = data.displayName;
+    if (data.bio !== undefined) userProfiles[idStr].bio = data.bio;
+    if (data.avatarUrl !== undefined) userProfiles[idStr].avatarUrl = data.avatarUrl;
+    if (data.avatar !== undefined) userProfiles[idStr].avatar = data.avatar;
+    
+    saveUserProfiles();
+    
+    // Update UI
+    updateUI();
+    
+    // Kirim event ke socket untuk update real-time
+    socket.emit('profile-updated', { userId: idStr, profile: userProfiles[idStr] });
+}
+
+// Upload avatar to Cloudinary
+async function uploadAvatar(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    showNotification('Mengupload avatar...', 'info');
+    
+    try {
+        const response = await fetch('/api/upload-avatar', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showNotification('Avatar berhasil diupload!', 'success');
+            return result.url;
+        } else {
+            showNotification('Gagal mengupload avatar', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showNotification('Error upload avatar', 'error');
+        return null;
+    }
+}
+
+// Open profile modal
+function openProfileModal() {
+    const userId = currentUser?.id || currentUser?.username;
+    if (!userId) {
+        showNotification('Login terlebih dahulu!', 'error');
+        return;
+    }
+    
+    const profile = getUserProfile(userId);
+    
+    document.getElementById('profileDisplayName').value = profile.displayName || userId;
+    document.getElementById('profileUsername').value = userId;
+    document.getElementById('profileBio').value = profile.bio || '';
+    
+    // Set avatar
+    const avatarContainer = document.getElementById('profileAvatarLarge');
+    const avatarText = document.getElementById('profileAvatarText');
+    if (profile.avatarUrl) {
+        avatarContainer.style.backgroundImage = `url(${profile.avatarUrl})`;
+        avatarContainer.style.backgroundSize = 'cover';
+        avatarContainer.style.backgroundPosition = 'center';
+        avatarText.style.display = 'none';
+    } else {
+        avatarContainer.style.backgroundImage = 'none';
+        avatarContainer.style.backgroundColor = '#5865f2';
+        avatarText.textContent = profile.avatar || userId.charAt(0).toUpperCase();
+        avatarText.style.display = 'flex';
+    }
+    
+    // Set member since
+    const memberSince = profile.memberSince ? new Date(profile.memberSince) : new Date();
+    document.getElementById('profileMemberSince').textContent = memberSince.toLocaleDateString('id-ID', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    
+    document.getElementById('profileModal').style.display = 'flex';
+}
+
+// Close profile modal
+function closeProfileModal() {
+    document.getElementById('profileModal').style.display = 'none';
+}
+
+// Save profile
+async function saveProfile() {
+    const userId = currentUser?.id || currentUser?.username;
+    if (!userId) return;
+    
+    const displayName = document.getElementById('profileDisplayName').value.trim();
+    const bio = document.getElementById('profileBio').value.trim();
+    
+    if (!displayName) {
+        showNotification('Display name tidak boleh kosong!', 'error');
+        return;
+    }
+    
+    await updateUserProfile(userId, {
+        displayName: displayName,
+        bio: bio
+    });
+    
+    showNotification('Profil berhasil disimpan!', 'success');
+    closeProfileModal();
+    
+    // Update user info di sidebar
+    updateUI();
+}
+
 // Helper Functions
 function showNotification(message, type = 'info') {
     const colors = {
@@ -1133,6 +1286,31 @@ function closeModals() {
     });
 }
 
+// ============ UPDATE UI ============
+
+function updateUI() {
+    const userAvatarDiv = document.getElementById('userAvatar');
+    const currentUsernameSpan = document.getElementById('currentUsername');
+    
+    if (currentUser && userAvatarDiv) {
+        const profile = getUserProfile(currentUser.id || currentUser.username);
+        if (profile.avatarUrl) {
+            userAvatarDiv.style.backgroundImage = `url(${profile.avatarUrl})`;
+            userAvatarDiv.style.backgroundSize = 'cover';
+            userAvatarDiv.style.backgroundPosition = 'center';
+            userAvatarDiv.textContent = '';
+        } else {
+            userAvatarDiv.style.backgroundImage = 'none';
+            userAvatarDiv.style.backgroundColor = '#5865f2';
+            userAvatarDiv.textContent = profile.avatar || currentUser.username.charAt(0).toUpperCase();
+        }
+        
+        if (currentUsernameSpan) {
+            currentUsernameSpan.textContent = profile.displayName || currentUser.username;
+        }
+    }
+}
+
 // ============ SETUP FUNCTIONS ============
 
 function setupEmojiPicker() {
@@ -1286,6 +1464,7 @@ function setupSocketEvents() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('App initializing...');
+    loadUserProfiles();
     await loadData();
     setupEmojiPicker();
     setupSocketEvents();
@@ -1294,13 +1473,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (checkLogin()) {
         const authPage = document.getElementById('authPage');
         const mainApp = document.getElementById('mainApp');
-        const currentUsernameSpan = document.getElementById('currentUsername');
-        const userAvatarDiv = document.getElementById('userAvatar');
         
         if (authPage) authPage.style.display = 'none';
         if (mainApp) mainApp.style.display = 'flex';
-        if (currentUsernameSpan) currentUsernameSpan.textContent = currentUser.username;
-        if (userAvatarDiv) userAvatarDiv.textContent = currentUser.avatar;
+        
+        // Update UI dengan profil
+        updateUI();
         
         const userServers = getUserServers();
         if (userServers.length > 0) {
@@ -1311,6 +1489,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         setupFileUpload();
     }
+    
+    // Setup profile modal events
+    const userAvatarDiv = document.getElementById('userAvatar');
+    if (userAvatarDiv) {
+        userAvatarDiv.addEventListener('click', () => {
+            openProfileModal();
+        });
+    }
+    
+    document.getElementById('changeAvatarBtn')?.addEventListener('click', () => {
+        document.getElementById('avatarUploadInput').click();
+    });
+    
+    document.getElementById('avatarUploadInput')?.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file && file.size <= 2 * 1024 * 1024) {
+            const avatarUrl = await uploadAvatar(file);
+            if (avatarUrl) {
+                const userId = currentUser?.id || currentUser?.username;
+                await updateUserProfile(userId, { avatarUrl: avatarUrl });
+                
+                // Update tampilan avatar di modal
+                const avatarContainer = document.getElementById('profileAvatarLarge');
+                const avatarText = document.getElementById('profileAvatarText');
+                avatarContainer.style.backgroundImage = `url(${avatarUrl})`;
+                avatarContainer.style.backgroundSize = 'cover';
+                avatarContainer.style.backgroundPosition = 'center';
+                avatarText.style.display = 'none';
+                
+                updateUI();
+            }
+        } else if (file && file.size > 2 * 1024 * 1024) {
+            showNotification('File terlalu besar! Maksimal 2MB', 'error');
+        }
+    });
+    
+    document.getElementById('saveProfileBtn')?.addEventListener('click', saveProfile);
+    document.getElementById('cancelProfileBtn')?.addEventListener('click', closeProfileModal);
+    document.getElementById('closeProfileBtn')?.addEventListener('click', closeProfileModal);
     
     // Auth tab switching
     const authTabs = document.querySelectorAll('.auth-tab');
@@ -1337,8 +1554,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (result.success) {
                 document.getElementById('authPage').style.display = 'none';
                 document.getElementById('mainApp').style.display = 'flex';
-                document.getElementById('currentUsername').textContent = currentUser.username;
-                document.getElementById('userAvatar').textContent = currentUser.avatar;
+                
+                updateUI();
                 
                 const userServers = getUserServers();
                 if (userServers.length > 0) {

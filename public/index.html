@@ -53,7 +53,6 @@
                 <div class="user-avatar" id="userAvatar">U</div>
                 <div class="user-details">
                     <span id="currentUsername">User</span>
-                    <span class="user-discriminator">#1234</span>
                 </div>
                 <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
             </div>
@@ -243,6 +242,57 @@
             <div class="invite-code">
                 <input type="text" id="inviteCode" readonly>
                 <button id="copyInviteBtn" class="copy-btn">Salin</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Modal -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-circle"></i> Profil Saya</h3>
+                <button id="closeProfileBtn" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <!-- Avatar -->
+                <div class="profile-avatar-container">
+                    <div class="profile-avatar-large" id="profileAvatarLarge">
+                        <span id="profileAvatarText">U</span>
+                    </div>
+                    <button id="changeAvatarBtn" class="profile-avatar-edit">
+                        <i class="fas fa-camera"></i>
+                    </button>
+                    <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;">
+                </div>
+
+                <!-- Display Name -->
+                <div class="profile-field">
+                    <label>Display Name</label>
+                    <input type="text" id="profileDisplayName" placeholder="Nama tampilan">
+                </div>
+
+                <!-- Username (readonly) -->
+                <div class="profile-field">
+                    <label>Username</label>
+                    <input type="text" id="profileUsername" readonly disabled>
+                </div>
+            
+                <!-- Bio -->
+                <div class="profile-field">
+                    <label>Bio</label>
+                    <textarea id="profileBio" rows="3" placeholder="Tulis sesuatu tentang dirimu..."></textarea>
+                </div>
+            
+                <!-- Member Since -->
+                <div class="profile-field" style="margin-top: 12px;">
+                    <label>Bergabung sejak</label>
+                    <p id="profileMemberSince" style="color: #949ba4; font-size: 12px;">-</p>
+                </div>
+
+                <div class="modal-buttons" style="margin-top: 20px;">
+                    <button id="saveProfileBtn" class="save-btn">Simpan Profil</button>
+                    <button id="cancelProfileBtn" class="cancel-btn">Batal</button>
+                </div>
             </div>
         </div>
     </div>

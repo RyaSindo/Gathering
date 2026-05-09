@@ -1030,6 +1030,96 @@ body {
     white-space: nowrap;
 }
 
+/* Profile Modal Styles */
+.profile-avatar-container {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 20px;
+}
+
+.profile-avatar-large {
+    width: 100px;
+    height: 100px;
+    background-color: #5865f2;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 48px;
+    font-weight: bold;
+    color: white;
+    margin: 0 auto;
+}
+
+.profile-avatar-edit {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    background-color: #5865f2;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: white;
+    transition: all 0.2s;
+}
+
+.profile-avatar-edit:hover {
+    background-color: #4752c4;
+    transform: scale(1.05);
+}
+
+.profile-field {
+    text-align: left;
+    margin-bottom: 16px;
+}
+
+.profile-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #949ba4;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.profile-field input,
+.profile-field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background-color: #1e1f22;
+    border: 1px solid #404249;
+    border-radius: 8px;
+    color: #dbdee1;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.profile-field input:focus,
+.profile-field textarea:focus {
+    outline: none;
+    border-color: #5865f2;
+}
+
+.profile-field input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Avatar di user info sidebar */
+.user-info .user-avatar {
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.user-info .user-avatar:hover {
+    opacity: 0.8;
+}
+
 /* Untuk memastikan date separator tidak mengganggu layout mobile */
 @media (max-width: 768px) {
     .date-separator-text {
