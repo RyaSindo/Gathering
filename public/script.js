@@ -117,33 +117,26 @@ function isModerator(serverId, userId) {
     return member && member.role === 'moderator';
 }
 
-// ============ FUNGSI CEK HAPUS PESAN (DIPERBAIKI) ============
+// ============ FUNGSI CEK HAPUS PESAN ============
 function canDeleteMessage(message, currentUserId, currentServerId) {
     const messageUserId = message.userId;
     const messageAuthorRole = getUserRoleInServer(currentServerId, messageUserId);
     const currentUserRole = getUserRoleInServer(currentServerId, currentUserId);
     
-    // OWNER: bisa menghapus SEMUA pesan (termasuk owner, moderator, member)
     if (currentUserRole === 'owner') {
         return true;
     }
     
-    // MODERATOR: hanya bisa menghapus pesan dari MEMBER BIASA
-    // Tidak bisa menghapus pesan dari OWNER atau MODERATOR lain
     if (currentUserRole === 'moderator') {
-        // Moderator tidak bisa hapus pesan owner
         if (messageAuthorRole === 'owner') {
             return false;
         }
-        // Moderator tidak bisa hapus pesan moderator lain
         if (messageAuthorRole === 'moderator') {
             return false;
         }
-        // Moderator bisa hapus pesan member
         return messageAuthorRole === 'member';
     }
     
-    // MEMBER: hanya bisa menghapus pesan sendiri
     return messageUserId === currentUserId;
 }
 
@@ -165,7 +158,7 @@ function canDeleteServer(serverId, userId) {
     return isOwner(serverId, userId);
 }
 
-// ============ FUNGSI DELETE MESSAGE (DENGAN KONFIRMASI FILE) ============
+// ============ FUNGSI DELETE MESSAGE ============
 
 async function deleteMessage(messageId) {
     const message = messages.find(m => m.id === messageId);
@@ -722,6 +715,35 @@ async function updateMemberRole(memberId, newRole) {
     showNotification(`Role member berhasil diubah menjadi ${newRole}`, 'success');
 }
 
+// ============ FUNGSI PEMBATAS TANGGAL ============
+
+function formatDateHeader(date) {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    
+    const dayName = days[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${dayName}, ${day} ${month} ${year}`;
+}
+
+function getDateString(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function renderDateSeparator(date) {
+    const dateString = formatDateHeader(date);
+    return `
+        <div class="date-separator">
+            <div class="date-separator-line"></div>
+            <div class="date-separator-text">${dateString}</div>
+            <div class="date-separator-line"></div>
+        </div>
+    `;
+}
+
 // ============ RENDER FUNCTIONS ============
 
 function renderServers() {
@@ -921,20 +943,8 @@ function renderMessages() {
         return;
     }
     
-    container.innerHTML = '';
-    channelMessages.forEach(msg => {
-        const div = document.createElement('div');
-        div.className = 'message';
-        const date = new Date(msg.timestamp);
-        const timeStr = date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        
-            // Urutkan pesan berdasarkan timestamp
+    // Urutkan pesan berdasarkan timestamp
     const sortedMessages = [...channelMessages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    
-    if (sortedMessages.length === 0) {
-        container.innerHTML = '<div class="welcome-message"><i class="fas fa-comment-dots" style="font-size: 48px; margin-bottom: 20px;"></i><h2>Belum ada pesan</h2><p>Kirim pesan pertama!</p></div>';
-        return;
-    }
     
     container.innerHTML = '';
     
@@ -953,7 +963,7 @@ function renderMessages() {
         const div = document.createElement('div');
         div.className = 'message';
         const timeStr = msgDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
+        
         const canDelete = canDeleteMessage(msg, currentUser.id, currentServerId);
 
         let fileHtml = '';
@@ -1182,7 +1192,6 @@ function initMobileMenu() {
     const leftSidebar = document.querySelector('.left-sidebar');
     const middleSidebar = document.querySelector('.middle-sidebar');
     const openLeftBtn = document.getElementById('openLeftMenuBtn');
-    // const openMiddleBtn = document.getElementById('openMiddleMenuBtn');
     const openMembersBtn = document.getElementById('openMembersBtn');
     const closeLeftBtn = document.getElementById('closeLeftSidebar');
     const closeMiddleBtn = document.getElementById('closeMiddleSidebar');
@@ -1192,12 +1201,6 @@ function initMobileMenu() {
             leftSidebar.classList.add('open');
         });
     }
-    
-    // if (openMiddleBtn) {
-    //     openMiddleBtn.addEventListener('click', () => {
-    //         middleSidebar.classList.add('open');
-    //     });
-    // }
     
     if (openMembersBtn) {
         openMembersBtn.addEventListener('click', () => {
@@ -1562,36 +1565,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (e.target.classList.contains('modal')) closeModals();
     });
 });
-
-// Pembeda hari
-function formatDateHeader(date) {
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    
-    const dayName = days[date.getDay()];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    
-    return `${dayName}, ${day} ${month} ${year}`;
-}
-
-function getDateString(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function shouldAddDateSeparator(prevMessageDate, currentMessageDate) {
-    if (!prevMessageDate) return true; // Pesan pertama dalam channel
-    return getDateString(prevMessageDate) !== getDateString(currentMessageDate);
-}
-
-function renderDateSeparator(date) {
-    const dateString = formatDateHeader(date);
-    return `
-        <div class="date-separator">
-            <div class="date-separator-line"></div>
-            <div class="date-separator-text">${dateString}</div>
-            <div class="date-separator-line"></div>
-        </div>
-    `;
-}
