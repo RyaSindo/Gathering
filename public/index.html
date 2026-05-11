@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <title>Gathering</title>
+    <title>Gathering - Discord Clone</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -13,9 +13,8 @@
     <!-- Login/Register Page -->
     <div id="authPage" class="auth-container">
         <div class="auth-box">
-            <h1>
-                Gathering
-            </h1>
+            <h1><i class="fas fa-users"></i> Gathering</h1>
+            <p class="auth-subtitle">Platform chat real-time untuk komunitas</p>
             <div class="auth-tabs">
                 <button class="auth-tab active" data-tab="login">Login</button>
                 <button class="auth-tab" data-tab="register">Register</button>
@@ -41,15 +40,15 @@
 
     <!-- Main App -->
     <div id="mainApp" class="app-container" style="display: none;">
+        <!-- LEFT SIDEBAR: User Info + Servers -->
         <div class="left-sidebar" id="leftSidebar">
-            <!-- Mobile Close Button -->
             <div class="mobile-sidebar-header">
                 <h3>Servers</h3>
                 <button class="close-sidebar" id="closeLeftSidebar"><i class="fas fa-times"></i></button>
             </div>
             
             <!-- User Info -->
-            <div class="user-info">
+            <div class="user-info" id="userInfoBtn">
                 <div class="user-avatar" id="userAvatar">U</div>
                 <div class="user-details">
                     <span id="currentUsername">User</span>
@@ -60,7 +59,7 @@
             <!-- Servers Section -->
             <div class="servers-section">
                 <div class="section-header">
-                    <h4>Servers</h4>
+                    <h4><i class="fas fa-server"></i> Servers</h4>
                     <button id="createServerBtn" class="add-btn"><i class="fas fa-plus"></i></button>
                 </div>
                 <div id="serverList" class="server-list"></div>
@@ -68,14 +67,13 @@
             
             <!-- Join Server Section -->
             <div class="join-section">
-                <input type="text" id="joinServerCode" placeholder="Server Code">
-                <button id="joinServerBtn" class="join-btn">Join</button>
+                <input type="text" id="joinServerCode" placeholder="Kode Undangan">
+                <button id="joinServerBtn" class="join-btn"><i class="fas fa-sign-in-alt"></i> Join</button>
             </div>
         </div>
 
-        <!-- SIDEBAR Channels -->
+        <!-- MIDDLE SIDEBAR: Channels + Members -->
         <div class="middle-sidebar" id="middleSidebar">
-            <!-- Mobile Close Button -->
             <div class="mobile-sidebar-header">
                 <h3 id="mobileChannelHeader">Channels</h3>
                 <button class="close-sidebar" id="closeMiddleSidebar"><i class="fas fa-times"></i></button>
@@ -90,7 +88,7 @@
             <!-- Channels Section -->
             <div class="channels-section">
                 <div class="section-header">
-                    <h4>Text Channels</h4>
+                    <h4><i class="fas fa-hashtag"></i> Text Channels</h4>
                     <button id="addChannelBtn" class="add-btn"><i class="fas fa-plus"></i></button>
                 </div>
                 <div id="channelList" class="channel-list"></div>
@@ -99,13 +97,13 @@
             <!-- Members Section -->
             <div class="members-section">
                 <div class="section-header">
-                    <h4>Members</h4>
+                    <h4><i class="fas fa-users"></i> Members</h4>
                 </div>
                 <div id="membersList" class="members-list"></div>
             </div>
         </div>
 
-        <!-- Chat Area -->
+        <!-- CHAT AREA -->
         <div class="chat-area" id="chatArea">
             <!-- Chat Header -->
             <div class="chat-header">
@@ -113,9 +111,6 @@
                     <button class="mobile-menu-btn" id="openLeftMenuBtn">
                         <i class="fas fa-bars"></i>
                     </button>
-                    <!-- <button class="mobile-menu-btn" id="openMiddleMenuBtn">
-                        <i class="fas fa-hashtag"></i>
-                    </button> -->
                     <h3 id="currentChannelName"><i class="fas fa-hashtag"></i> Pilih Channel</h3>
                 </div>
                 <div class="chat-header-right">
@@ -128,7 +123,7 @@
             <!-- Messages Container -->
             <div id="messagesContainer" class="messages-container">
                 <div class="welcome-message">
-                    <!-- <i class="fab fa-discord"></i> -->
+                    <i class="fas fa-comments"></i>
                     <h2>Selamat Datang di Gathering</h2>
                     <p>Pilih server dan channel untuk mulai chatting</p>
                 </div>
@@ -159,11 +154,13 @@
         </div>
     </div>
 
+    <!-- ============ MODALS ============ -->
+
     <!-- Sticker Modal -->
     <div id="stickerModal" class="modal">
         <div class="modal-content sticker-modal">
             <div class="modal-header">
-                <h3>Stiker</h3>
+                <h3><i class="fas fa-smile-wink"></i> Stiker</h3>
                 <button id="closeStickerBtn" class="modal-close"><i class="fas fa-times"></i></button>
             </div>
             <div class="sticker-grid" id="stickerGrid"></div>
@@ -174,7 +171,7 @@
     <div id="roleModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Atur Role Member</h3>
+                <h3><i class="fas fa-user-shield"></i> Atur Role Member</h3>
                 <button id="closeRoleBtn" class="modal-close"><i class="fas fa-times"></i></button>
             </div>
             <p id="roleMemberName">Member:</p>
@@ -185,63 +182,6 @@
                 <button id="makeMemberBtn" class="role-btn member-btn">
                     <i class="fas fa-user"></i> Jadikan Member Biasa
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Create Server Modal -->
-    <div id="createServerModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Buat Server Baru</h3>
-                <button id="cancelCreateServerBtn" class="modal-close"><i class="fas fa-times"></i></button>
-            </div>
-            <input type="text" id="newServerName" placeholder="Nama Server">
-            <div class="modal-buttons">
-                <button id="confirmCreateServerBtn" class="save-btn">Buat</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Add Channel Modal -->
-    <div id="channelModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Buat Channel</h3>
-                <button id="cancelChannelBtn" class="modal-close"><i class="fas fa-times"></i></button>
-            </div>
-            <input type="text" id="channelName" placeholder="Nama Channel">
-            <div class="modal-buttons">
-                <button id="saveChannelBtn" class="save-btn">Buat</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Message Modal -->
-    <div id="editMessageModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit Pesan</h3>
-                <button id="cancelEditBtn" class="modal-close"><i class="fas fa-times"></i></button>
-            </div>
-            <textarea id="editMessageInput" rows="4"></textarea>
-            <div class="modal-buttons">
-                <button id="saveEditBtn" class="save-btn">Simpan</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Invite Modal -->
-    <div id="inviteModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Undang ke Server</h3>
-                <button id="closeInviteBtn" class="modal-close"><i class="fas fa-times"></i></button>
-            </div>
-            <p>Bagikan kode ini untuk mengundang teman:</p>
-            <div class="invite-code">
-                <input type="text" id="inviteCode" readonly>
-                <button id="copyInviteBtn" class="copy-btn">Salin</button>
             </div>
         </div>
     </div>
@@ -293,6 +233,63 @@
                     <button id="saveProfileBtn" class="save-btn">Simpan Profil</button>
                     <button id="cancelProfileBtn" class="cancel-btn">Batal</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Server Modal -->
+    <div id="createServerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus-circle"></i> Buat Server Baru</h3>
+                <button id="cancelCreateServerBtn" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <input type="text" id="newServerName" placeholder="Nama Server">
+            <div class="modal-buttons">
+                <button id="confirmCreateServerBtn" class="save-btn">Buat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Channel Modal -->
+    <div id="channelModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-hashtag"></i> Buat Channel</h3>
+                <button id="cancelChannelBtn" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <input type="text" id="channelName" placeholder="Nama Channel">
+            <div class="modal-buttons">
+                <button id="saveChannelBtn" class="save-btn">Buat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Message Modal -->
+    <div id="editMessageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Edit Pesan</h3>
+                <button id="cancelEditBtn" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <textarea id="editMessageInput" rows="4"></textarea>
+            <div class="modal-buttons">
+                <button id="saveEditBtn" class="save-btn">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invite Modal -->
+    <div id="inviteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-plus"></i> Undang ke Server</h3>
+                <button id="closeInviteBtn" class="modal-close"><i class="fas fa-times"></i></button>
+            </div>
+            <p>Bagikan kode ini untuk mengundang teman:</p>
+            <div class="invite-code">
+                <input type="text" id="inviteCode" readonly>
+                <button id="copyInviteBtn" class="copy-btn">Salin</button>
             </div>
         </div>
     </div>

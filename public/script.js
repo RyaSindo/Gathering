@@ -1,10 +1,8 @@
-// Socket.IO connection
+// ==================== SOCKET.IO & API CONFIGURATION ====================
 const socket = io();
-
-// API Configuration
 const API_URL = window.location.origin + '/api';
 
-// Data Storage
+// ==================== DATA STORAGE ====================
 let currentUser = null;
 let users = [];
 let servers = [];
@@ -25,31 +23,69 @@ let pendingFileObject = null;
 let pendingFileOriginalName = null;
 let pendingFileSize = null;
 
-// User Profiles
+// User Profiles (local storage)
 let userProfiles = {};
 
-// ============ FUNGSI PROFIL ============
+// ==================== HELPER FUNCTIONS ====================
+function showNotification(message, type = 'info') {
+    const colors = {
+        success: '#3ba55d',
+        error: '#ed4245',
+        info: '#5865f2'
+    };
+    
+    let notification = document.getElementById('notification');
+    if (!notification) {
+        notification = document.createElement('div');
+        notification.id = 'notification';
+        document.body.appendChild(notification);
+    }
+    
+    notification.style.backgroundColor = colors[type];
+    notification.textContent = message;
+    notification.style.display = 'block';
+    notification.style.animation = 'slideIn 0.3s ease';
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 300);
+    }, 3000);
+}
 
-// Load user profiles from localStorage
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function closeModals() {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        modal.style.display = 'none';
+    });
+}
+
+// ==================== PROFILE FUNCTIONS ====================
 function loadUserProfiles() {
-    const saved = localStorage.getItem('user_profiles');
+    const saved = localStorage.getItem('gathering_profiles');
     if (saved) {
         userProfiles = JSON.parse(saved);
     }
 }
 
-// Save user profiles to localStorage
 function saveUserProfiles() {
-    localStorage.setItem('user_profiles', JSON.stringify(userProfiles));
+    localStorage.setItem('gathering_profiles', JSON.stringify(userProfiles));
 }
 
-// Get user profile
 function getUserProfile(userId) {
     const idStr = String(userId);
     if (!userProfiles[idStr]) {
         userProfiles[idStr] = {
             displayName: idStr,
-            bio: 'Pecinta film 🎬',
+            bio: 'Anggota Gathering 🎉',
             avatar: idStr.charAt(0).toUpperCase(),
             avatarUrl: null,
             memberSince: new Date().toISOString()
@@ -59,7 +95,29 @@ function getUserProfile(userId) {
     return userProfiles[idStr];
 }
 
-// Update user profile
+function updateUI() {
+    const userAvatarDiv = document.getElementById('userAvatar');
+    const currentUsernameSpan = document.getElementById('currentUsername');
+    
+    if (currentUser && userAvatarDiv) {
+        const profile = getUserProfile(currentUser.id || currentUser.username);
+        if (profile.avatarUrl) {
+            userAvatarDiv.style.backgroundImage = `url(${profile.avatarUrl})`;
+            userAvatarDiv.style.backgroundSize = 'cover';
+            userAvatarDiv.style.backgroundPosition = 'center';
+            userAvatarDiv.textContent = '';
+        } else {
+            userAvatarDiv.style.backgroundImage = 'none';
+            userAvatarDiv.style.backgroundColor = '#5865f2';
+            userAvatarDiv.textContent = profile.avatar || currentUser.username.charAt(0).toUpperCase();
+        }
+        
+        if (currentUsernameSpan) {
+            currentUsernameSpan.textContent = profile.displayName || currentUser.username;
+        }
+    }
+}
+
 async function updateUserProfile(userId, data) {
     const idStr = String(userId);
     if (!userProfiles[idStr]) {
@@ -72,15 +130,10 @@ async function updateUserProfile(userId, data) {
     if (data.avatar !== undefined) userProfiles[idStr].avatar = data.avatar;
     
     saveUserProfiles();
-    
-    // Update UI
     updateUI();
-    
-    // Kirim event ke socket untuk update real-time
-    socket.emit('profile-updated', { userId: idStr, profile: userProfiles[idStr] });
+    showNotification('Profil berhasil diperbarui!', 'success');
 }
 
-// Upload avatar to Cloudinary
 async function uploadAvatar(file) {
     const formData = new FormData();
     formData.append('file', file);
@@ -108,7 +161,6 @@ async function uploadAvatar(file) {
     }
 }
 
-// Open profile modal
 function openProfileModal() {
     const userId = currentUser?.id || currentUser?.username;
     if (!userId) {
@@ -148,12 +200,10 @@ function openProfileModal() {
     document.getElementById('profileModal').style.display = 'flex';
 }
 
-// Close profile modal
 function closeProfileModal() {
     document.getElementById('profileModal').style.display = 'none';
 }
 
-// Save profile
 async function saveProfile() {
     const userId = currentUser?.id || currentUser?.username;
     if (!userId) return;
@@ -171,88 +221,10 @@ async function saveProfile() {
         bio: bio
     });
     
-    showNotification('Profil berhasil disimpan!', 'success');
     closeProfileModal();
-    
-    // Update user info di sidebar
-    updateUI();
 }
 
-// Helper Functions
-function showNotification(message, type = 'info') {
-    const colors = {
-        success: '#3ba55d',
-        error: '#ed4245',
-        info: '#5865f2'
-    };
-    
-    let notification = document.getElementById('notification');
-    if (!notification) {
-        notification = document.createElement('div');
-        notification.id = 'notification';
-        document.body.appendChild(notification);
-    }
-    
-    notification.style.backgroundColor = colors[type];
-    notification.textContent = message;
-    notification.style.display = 'block';
-    notification.style.animation = 'slideIn 0.3s ease';
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            notification.style.display = 'none';
-        }, 300);
-    }, 3000);
-}
-
-// Detect GIF URL from message
-function detectGifUrl(text) {
-    const gifRegex = /(https?:\/\/[^\s]+\.(?:gif|giphy|tenor)[^\s]*)/gi;
-    const match = text.match(gifRegex);
-    return match ? match[0] : null;
-}
-
-// Get file icon based on extension
-function getFileIcon(filename) {
-    if (!filename) return 'fa-file';
-    const ext = filename.split('.').pop().toLowerCase();
-    const iconMap = {
-        'pdf': 'fa-file-pdf',
-        'doc': 'fa-file-word',
-        'docx': 'fa-file-word',
-        'xls': 'fa-file-excel',
-        'xlsx': 'fa-file-excel',
-        'ppt': 'fa-file-powerpoint',
-        'pptx': 'fa-file-powerpoint',
-        'txt': 'fa-file-alt',
-        'zip': 'fa-file-archive',
-        'rar': 'fa-file-archive',
-        '7z': 'fa-file-archive',
-        'jar': 'fa-file-code',
-        'exe': 'fa-file-code',
-        'mp3': 'fa-file-audio',
-        'wav': 'fa-file-audio',
-        'mp4': 'fa-file-video',
-        'mov': 'fa-file-video',
-        'avi': 'fa-file-video',
-        'mkv': 'fa-file-video',
-        'jpg': 'fa-file-image',
-        'jpeg': 'fa-file-image',
-        'png': 'fa-file-image',
-        'gif': 'fa-file-image',
-        'webp': 'fa-file-image',
-        'json': 'fa-file-code',
-        'xml': 'fa-file-code',
-        'html': 'fa-file-code',
-        'css': 'fa-file-code',
-        'js': 'fa-file-code'
-    };
-    return iconMap[ext] || 'fa-file';
-}
-
-// ============ FUNGSI UNTUK CEK OWNER DAN ROLE ============
-
+// ==================== ROLE & PERMISSION FUNCTIONS ====================
 function getUserRoleInServer(serverId, userId) {
     const member = serverMembers.find(m => m.serverId === serverId && m.userId === userId);
     return member ? member.role : null;
@@ -270,27 +242,15 @@ function isModerator(serverId, userId) {
     return member && member.role === 'moderator';
 }
 
-// ============ FUNGSI CEK HAPUS PESAN ============
 function canDeleteMessage(message, currentUserId, currentServerId) {
-    const messageUserId = message.userId;
-    const messageAuthorRole = getUserRoleInServer(currentServerId, messageUserId);
+    const messageAuthorRole = getUserRoleInServer(currentServerId, message.userId);
     const currentUserRole = getUserRoleInServer(currentServerId, currentUserId);
     
-    if (currentUserRole === 'owner') {
-        return true;
-    }
-    
+    if (currentUserRole === 'owner') return true;
     if (currentUserRole === 'moderator') {
-        if (messageAuthorRole === 'owner') {
-            return false;
-        }
-        if (messageAuthorRole === 'moderator') {
-            return false;
-        }
-        return messageAuthorRole === 'member';
+        return messageAuthorRole !== 'owner' && messageAuthorRole !== 'moderator';
     }
-    
-    return messageUserId === currentUserId;
+    return message.userId === currentUserId;
 }
 
 function canCreateChannel(serverId, userId) {
@@ -311,245 +271,62 @@ function canDeleteServer(serverId, userId) {
     return isOwner(serverId, userId);
 }
 
-// ============ FUNGSI DELETE MESSAGE ============
-
-async function deleteMessage(messageId) {
-    const message = messages.find(m => m.id === messageId);
-    if (!message) return;
-    
-    if (!canDeleteMessage(message, currentUser.id, currentServerId)) {
-        showNotification('Anda tidak memiliki izin untuk menghapus pesan ini!', 'error');
-        return;
-    }
-    
-    let confirmMessage = 'Hapus pesan ini?';
-    if (message.fileUrl) {
-        confirmMessage = 'Hapus pesan ini? File yang dilampirkan (gambar/video/dokumen) juga akan dihapus secara permanen!';
-    }
-    
-    if (confirm(confirmMessage)) {
-        try {
-            const response = await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
-            if (response.ok) {
-                showNotification(message.fileUrl ? 'Pesan dan file berhasil dihapus' : 'Pesan berhasil dihapus', 'success');
-            } else {
-                showNotification('Gagal menghapus pesan', 'error');
-            }
-        } catch (error) {
-            console.error('Delete error:', error);
-            showNotification('Error saat menghapus pesan', 'error');
-        }
-    }
+// ==================== DETECT GIF URL ====================
+function detectGifUrl(text) {
+    const gifRegex = /(https?:\/\/[^\s]+\.(?:gif|giphy|tenor)[^\s]*)/gi;
+    const match = text.match(gifRegex);
+    return match ? match[0] : null;
 }
 
-// ============ FILE PREVIEW AREA ============
-
-function showPreviewArea(file, fileType, previewUrl) {
-    const previewArea = document.getElementById('filePreviewArea');
-    const previewContent = document.getElementById('filePreviewContent');
-    const removeBtn = document.getElementById('removeFilePreviewBtn');
-    
-    if (!previewArea || !previewContent) return;
-    
-    const fileSize = (file.size / 1024 / 1024).toFixed(2);
-    const fileExt = file.name.split('.').pop().toUpperCase();
-    
-    let previewHtml = '';
-    
-    if (fileType === 'image' && previewUrl) {
-        previewHtml = `
-            <div class="preview-image-container">
-                <img src="${previewUrl}" class="preview-image" alt="Preview">
-                <div class="preview-file-info">
-                    <span class="file-name">${escapeHtml(file.name)}</span>
-                    <span class="file-size">${fileSize} MB</span>
-                </div>
-            </div>
-        `;
-    } else if (fileType === 'video' && previewUrl) {
-        previewHtml = `
-            <div class="preview-video-container">
-                <video src="${previewUrl}" class="preview-video" controls></video>
-                <div class="preview-file-info">
-                    <span class="file-name">${escapeHtml(file.name)}</span>
-                    <span class="file-size">${fileSize} MB</span>
-                </div>
-            </div>
-        `;
-    } else {
-        const fileIcon = getFileIcon(file.name);
-        previewHtml = `
-            <div class="preview-file">
-                <i class="fas ${fileIcon}"></i>
-                <div class="file-info">
-                    <span class="file-name">${escapeHtml(file.name)}</span>
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <small class="file-size">${fileSize} MB</small>
-                        <span class="file-type-badge">${fileExt}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    previewContent.innerHTML = previewHtml;
-    previewArea.style.display = 'block';
-    
-    if (removeBtn) {
-        removeBtn.onclick = () => {
-            clearFilePreview();
-        };
-    }
+// ==================== FILE ICON ====================
+function getFileIcon(filename) {
+    if (!filename) return 'fa-file';
+    const ext = filename.split('.').pop().toLowerCase();
+    const iconMap = {
+        'pdf': 'fa-file-pdf', 'doc': 'fa-file-word', 'docx': 'fa-file-word',
+        'xls': 'fa-file-excel', 'xlsx': 'fa-file-excel',
+        'ppt': 'fa-file-powerpoint', 'pptx': 'fa-file-powerpoint',
+        'txt': 'fa-file-alt', 'zip': 'fa-file-archive', 'rar': 'fa-file-archive',
+        '7z': 'fa-file-archive', 'jar': 'fa-file-code', 'exe': 'fa-file-code',
+        'mp3': 'fa-file-audio', 'wav': 'fa-file-audio',
+        'mp4': 'fa-file-video', 'mov': 'fa-file-video', 'avi': 'fa-file-video', 'mkv': 'fa-file-video',
+        'jpg': 'fa-file-image', 'jpeg': 'fa-file-image', 'png': 'fa-file-image',
+        'gif': 'fa-file-image', 'webp': 'fa-file-image',
+        'json': 'fa-file-code', 'xml': 'fa-file-code', 'html': 'fa-file-code',
+        'css': 'fa-file-code', 'js': 'fa-file-code'
+    };
+    return iconMap[ext] || 'fa-file';
 }
 
-function clearFilePreview() {
-    const previewArea = document.getElementById('filePreviewArea');
-    if (previewArea) {
-        previewArea.style.display = 'none';
-        const previewContent = document.getElementById('filePreviewContent');
-        if (previewContent) previewContent.innerHTML = '';
-    }
+// ==================== DATE SEPARATOR FUNCTIONS ====================
+function formatDateHeader(date) {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     
-    pendingFile = null;
-    pendingFileType = null;
-    pendingFileUrl = null;
-    pendingFileObject = null;
-    pendingFileOriginalName = null;
-    pendingFileSize = null;
+    const dayName = days[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    return `${dayName}, ${day} ${month} ${year}`;
 }
 
-// ============ UPLOAD FILE ============
-
-async function uploadFileAndPreview(file) {
-    console.log('Uploading file:', file.name, file.type);
-    
-    let fileType = 'file';
-    const ext = file.name.split('.').pop().toLowerCase();
-    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
-    const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv'];
-    
-    if (imageExts.includes(ext)) {
-        fileType = 'image';
-    } else if (videoExts.includes(ext)) {
-        fileType = 'video';
-    } else {
-        fileType = ext;
-    }
-    
-    pendingFileType = fileType;
-    pendingFileObject = file;
-    
-    let previewUrl = null;
-    if (fileType === 'image' || fileType === 'video') {
-        previewUrl = URL.createObjectURL(file);
-    }
-    
-    showPreviewArea(file, fileType, previewUrl);
-    
-    showNotification('Mengupload file...', 'info');
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    try {
-        const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (response.ok) {
-            const result = await response.json();
-            pendingFile = result;
-            pendingFileUrl = result.url;
-            pendingFileOriginalName = result.originalname;
-            pendingFileSize = result.size || file.size;
-            pendingFileType = result.type || fileType;
-            console.log('Upload success:', result);
-            showNotification(`File "${file.name}" siap dikirim!`, 'success');
-        } else {
-            const error = await response.json();
-            showNotification('Upload gagal: ' + (error.error || 'Unknown error'), 'error');
-            clearFilePreview();
-        }
-    } catch (error) {
-        console.error('Upload error:', error);
-        showNotification('Error upload: ' + error.message, 'error');
-        clearFilePreview();
-    }
+function getDateString(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-// ============ SEND MESSAGE ============
-
-async function sendMessageWithFile(content, fileUrl, fileType, originalname = null, fileSize = null) {
-    if (!currentChannelId) {
-        showNotification('Pilih channel terlebih dahulu', 'error');
-        return false;
-    }
-    
-    const response = await fetch(`${API_URL}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            channelId: currentChannelId,
-            userId: currentUser.id,
-            username: currentUser.username,
-            content: content || '',
-            fileUrl: fileUrl || null,
-            fileType: fileType || null,
-            originalname: originalname,
-            fileSize: fileSize || null
-        })
-    });
-    
-    if (!response.ok) {
-        const error = await response.json();
-        showNotification('Gagal mengirim pesan: ' + (error.error || 'Unknown error'), 'error');
-        return false;
-    }
-    
-    return true;
+function renderDateSeparator(date) {
+    const dateString = formatDateHeader(date);
+    return `
+        <div class="date-separator">
+            <div class="date-separator-line"></div>
+            <div class="date-separator-text">${dateString}</div>
+            <div class="date-separator-line"></div>
+        </div>
+    `;
 }
 
-async function sendMessage(content) {
-    if (!content.trim() && !pendingFile) {
-        showNotification('Tulis pesan atau pilih file terlebih dahulu', 'error');
-        return;
-    }
-    
-    if (!currentChannelId) {
-        showNotification('Pilih channel terlebih dahulu', 'error');
-        return;
-    }
-    
-    const gifUrl = detectGifUrl(content);
-    if (gifUrl && !pendingFile) {
-        await sendMessageWithFile('', gifUrl, 'gif');
-        document.getElementById('messageInput').value = '';
-        clearFilePreview();
-        return;
-    }
-    
-    if (pendingFile && pendingFileUrl) {
-        const success = await sendMessageWithFile(content, pendingFileUrl, pendingFileType, pendingFileOriginalName, pendingFileSize);
-        if (success) {
-            document.getElementById('messageInput').value = '';
-            clearFilePreview();
-        }
-    } else if (pendingFileObject && !pendingFileUrl) {
-        showNotification('Tunggu hingga file selesai diupload', 'error');
-        return;
-    } else {
-        const success = await sendMessageWithFile(content, null, null);
-        if (success) {
-            document.getElementById('messageInput').value = '';
-        }
-    }
-    
-    document.getElementById('messageInput').focus();
-}
-
-// ============ API FUNCTIONS ============
-
+// ==================== API FUNCTIONS ====================
 async function loadData() {
     try {
         const [usersRes, serversRes, membersRes, channelsRes, messagesRes] = await Promise.all([
@@ -580,7 +357,7 @@ async function login(username, password) {
         
         if (response.ok) {
             currentUser = await response.json();
-            localStorage.setItem('discord_current_user', JSON.stringify(currentUser));
+            localStorage.setItem('gathering_current_user', JSON.stringify(currentUser));
             return { success: true };
         } else {
             const error = await response.json();
@@ -595,7 +372,6 @@ async function register(username, email, password, confirmPassword) {
     if (password !== confirmPassword) {
         return { success: false, message: 'Password tidak cocok' };
     }
-    
     if (password.length < 6) {
         return { success: false, message: 'Password minimal 6 karakter' };
     }
@@ -620,14 +396,14 @@ async function register(username, email, password, confirmPassword) {
 
 function logout() {
     currentUser = null;
-    localStorage.removeItem('discord_current_user');
+    localStorage.removeItem('gathering_current_user');
     currentServerId = null;
     currentChannelId = null;
     clearFilePreview();
 }
 
 function checkLogin() {
-    const saved = localStorage.getItem('discord_current_user');
+    const saved = localStorage.getItem('gathering_current_user');
     if (saved) {
         currentUser = JSON.parse(saved);
         return true;
@@ -640,8 +416,7 @@ function getUserServers() {
     return servers.filter(s => userMemberships.some(m => m.serverId === s.id));
 }
 
-// ============ SERVER FUNCTIONS ============
-
+// ==================== SERVER FUNCTIONS ====================
 async function createServer(name) {
     const response = await fetch(`${API_URL}/servers`, {
         method: 'POST',
@@ -796,8 +571,7 @@ async function leaveServer(serverId) {
     return false;
 }
 
-// ============ CHANNEL FUNCTIONS ============
-
+// ==================== CHANNEL FUNCTIONS ====================
 async function addChannel(serverId, name) {
     if (!canCreateChannel(serverId, currentUser.id)) {
         showNotification('Anda tidak memiliki izin untuk membuat channel!', 'error');
@@ -868,37 +642,236 @@ async function updateMemberRole(memberId, newRole) {
     showNotification(`Role member berhasil diubah menjadi ${newRole}`, 'success');
 }
 
-// ============ FUNGSI PEMBATAS TANGGAL ============
-
-function formatDateHeader(date) {
-    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+// ==================== MESSAGE FUNCTIONS ====================
+async function deleteMessage(messageId) {
+    const message = messages.find(m => m.id === messageId);
+    if (!message) return;
     
-    const dayName = days[date.getDay()];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
+    if (!canDeleteMessage(message, currentUser.id, currentServerId)) {
+        showNotification('Anda tidak memiliki izin untuk menghapus pesan ini!', 'error');
+        return;
+    }
     
-    return `${dayName}, ${day} ${month} ${year}`;
+    let confirmMessage = 'Hapus pesan ini?';
+    if (message.fileUrl) {
+        confirmMessage = 'Hapus pesan ini? File yang dilampirkan (gambar/video/dokumen) juga akan dihapus secara permanen!';
+    }
+    
+    if (confirm(confirmMessage)) {
+        try {
+            const response = await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
+            if (response.ok) {
+                showNotification(message.fileUrl ? 'Pesan dan file berhasil dihapus' : 'Pesan berhasil dihapus', 'success');
+            } else {
+                showNotification('Gagal menghapus pesan', 'error');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            showNotification('Error saat menghapus pesan', 'error');
+        }
+    }
 }
 
-function getDateString(date) {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+async function sendMessageWithFile(content, fileUrl, fileType, originalname = null, fileSize = null) {
+    if (!currentChannelId) {
+        showNotification('Pilih channel terlebih dahulu', 'error');
+        return false;
+    }
+    
+    const response = await fetch(`${API_URL}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            channelId: currentChannelId,
+            userId: currentUser.id,
+            username: currentUser.username,
+            content: content || '',
+            fileUrl: fileUrl || null,
+            fileType: fileType || null,
+            originalname: originalname,
+            fileSize: fileSize || null
+        })
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        showNotification('Gagal mengirim pesan: ' + (error.error || 'Unknown error'), 'error');
+        return false;
+    }
+    
+    return true;
 }
 
-function renderDateSeparator(date) {
-    const dateString = formatDateHeader(date);
-    return `
-        <div class="date-separator">
-            <div class="date-separator-line"></div>
-            <div class="date-separator-text">${dateString}</div>
-            <div class="date-separator-line"></div>
-        </div>
-    `;
+async function sendMessage(content) {
+    if (!content.trim() && !pendingFile) {
+        showNotification('Tulis pesan atau pilih file terlebih dahulu', 'error');
+        return;
+    }
+    
+    if (!currentChannelId) {
+        showNotification('Pilih channel terlebih dahulu', 'error');
+        return;
+    }
+    
+    const gifUrl = detectGifUrl(content);
+    if (gifUrl && !pendingFile) {
+        await sendMessageWithFile('', gifUrl, 'gif');
+        document.getElementById('messageInput').value = '';
+        clearFilePreview();
+        return;
+    }
+    
+    if (pendingFile && pendingFileUrl) {
+        const success = await sendMessageWithFile(content, pendingFileUrl, pendingFileType, pendingFileOriginalName, pendingFileSize);
+        if (success) {
+            document.getElementById('messageInput').value = '';
+            clearFilePreview();
+        }
+    } else if (pendingFileObject && !pendingFileUrl) {
+        showNotification('Tunggu hingga file selesai diupload', 'error');
+        return;
+    } else {
+        const success = await sendMessageWithFile(content, null, null);
+        if (success) {
+            document.getElementById('messageInput').value = '';
+        }
+    }
+    
+    document.getElementById('messageInput').focus();
 }
 
-// ============ RENDER FUNCTIONS ============
+// ==================== FILE PREVIEW & UPLOAD ====================
+function showPreviewArea(file, fileType, previewUrl) {
+    const previewArea = document.getElementById('filePreviewArea');
+    const previewContent = document.getElementById('filePreviewContent');
+    const removeBtn = document.getElementById('removeFilePreviewBtn');
+    
+    if (!previewArea || !previewContent) return;
+    
+    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+    const fileExt = file.name.split('.').pop().toUpperCase();
+    
+    let previewHtml = '';
+    
+    if (fileType === 'image' && previewUrl) {
+        previewHtml = `
+            <div class="preview-image-container">
+                <img src="${previewUrl}" class="preview-image" alt="Preview">
+                <div class="preview-file-info">
+                    <span class="file-name">${escapeHtml(file.name)}</span>
+                    <span class="file-size">${fileSize} MB</span>
+                </div>
+            </div>
+        `;
+    } else if (fileType === 'video' && previewUrl) {
+        previewHtml = `
+            <div class="preview-video-container">
+                <video src="${previewUrl}" class="preview-video" controls></video>
+                <div class="preview-file-info">
+                    <span class="file-name">${escapeHtml(file.name)}</span>
+                    <span class="file-size">${fileSize} MB</span>
+                </div>
+            </div>
+        `;
+    } else {
+        const fileIcon = getFileIcon(file.name);
+        previewHtml = `
+            <div class="preview-file">
+                <i class="fas ${fileIcon}"></i>
+                <div class="file-info">
+                    <span class="file-name">${escapeHtml(file.name)}</span>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <small class="file-size">${fileSize} MB</small>
+                        <span class="file-type-badge">${fileExt}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    previewContent.innerHTML = previewHtml;
+    previewArea.style.display = 'block';
+    
+    if (removeBtn) {
+        removeBtn.onclick = () => {
+            clearFilePreview();
+        };
+    }
+}
 
+function clearFilePreview() {
+    const previewArea = document.getElementById('filePreviewArea');
+    if (previewArea) {
+        previewArea.style.display = 'none';
+        const previewContent = document.getElementById('filePreviewContent');
+        if (previewContent) previewContent.innerHTML = '';
+    }
+    
+    pendingFile = null;
+    pendingFileType = null;
+    pendingFileUrl = null;
+    pendingFileObject = null;
+    pendingFileOriginalName = null;
+    pendingFileSize = null;
+}
+
+async function uploadFileAndPreview(file) {
+    console.log('Uploading file:', file.name, file.type);
+    
+    let fileType = 'file';
+    const ext = file.name.split('.').pop().toLowerCase();
+    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+    const videoExts = ['mp4', 'webm', 'mov', 'avi', 'mkv'];
+    
+    if (imageExts.includes(ext)) {
+        fileType = 'image';
+    } else if (videoExts.includes(ext)) {
+        fileType = 'video';
+    } else {
+        fileType = ext;
+    }
+    
+    pendingFileType = fileType;
+    pendingFileObject = file;
+    
+    let previewUrl = null;
+    if (fileType === 'image' || fileType === 'video') {
+        previewUrl = URL.createObjectURL(file);
+    }
+    
+    showPreviewArea(file, fileType, previewUrl);
+    showNotification('Mengupload file...', 'info');
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            pendingFile = result;
+            pendingFileUrl = result.url;
+            pendingFileOriginalName = result.originalname;
+            pendingFileSize = result.size || file.size;
+            pendingFileType = result.type || fileType;
+            showNotification(`File "${file.name}" siap dikirim!`, 'success');
+        } else {
+            const error = await response.json();
+            showNotification('Upload gagal: ' + (error.error || 'Unknown error'), 'error');
+            clearFilePreview();
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showNotification('Error upload: ' + error.message, 'error');
+        clearFilePreview();
+    }
+}
+
+// ==================== RENDER FUNCTIONS ====================
 function renderServers() {
     const container = document.getElementById('serverList');
     if (!container) return;
@@ -1084,29 +1057,26 @@ function renderMessages() {
     if (!container) return;
     
     if (!currentChannelId) {
-        container.innerHTML = '<div class="welcome-message"><h2>Pilih channel</h2><p>Pilih channel untuk mulai chatting</p></div>';
+        container.innerHTML = '<div class="welcome-message"><i class="fas fa-comments"></i><h2>Pilih channel</h2><p>Pilih channel untuk mulai chatting</p></div>';
         return;
     }
     
     const channelMessages = messages.filter(m => m.channelId === currentChannelId);
     
     if (channelMessages.length === 0) {
-        container.innerHTML = '<div class="welcome-message"><i class="fas fa-comment-dots" style="font-size: 48px; margin-bottom: 20px;"></i><h2>Belum ada pesan</h2><p>Kirim pesan pertama!</p></div>';
+        container.innerHTML = '<div class="welcome-message"><i class="fas fa-comment-dots"></i><h2>Belum ada pesan</h2><p>Kirim pesan pertama!</p></div>';
         return;
     }
     
-    // Urutkan pesan berdasarkan timestamp
     const sortedMessages = [...channelMessages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
     container.innerHTML = '';
-    
     let lastDate = null;
     
     sortedMessages.forEach(msg => {
         const msgDate = new Date(msg.timestamp);
         const currentDateStr = getDateString(msgDate);
         
-        // Tambahkan pembatas tanggal jika berganti hari
         if (lastDate !== currentDateStr) {
             container.insertAdjacentHTML('beforeend', renderDateSeparator(msgDate));
             lastDate = currentDateStr;
@@ -1115,22 +1085,11 @@ function renderMessages() {
         const div = document.createElement('div');
         div.className = 'message';
         const timeStr = msgDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        
         const canDelete = canDeleteMessage(msg, currentUser.id, currentServerId);
 
         let fileHtml = '';
         if (msg.fileUrl) {
-            let fileName = msg.originalname;
-            
-            if (!fileName || fileName === 'file' || fileName === 'Download') {
-                const urlParts = msg.fileUrl.split('/');
-                fileName = urlParts[urlParts.length - 1] || 'file';
-                const match = fileName.match(/^\d+-\w+-(.+)$/);
-                if (match) {
-                    fileName = match[1];
-                }
-            }
-            
+            let fileName = msg.originalname || 'file';
             const fileExt = fileName.split('.').pop().toLowerCase();
             const isImage = msg.fileType === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt);
             const isVideo = msg.fileType === 'video' || ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(fileExt);
@@ -1181,10 +1140,8 @@ function renderMessages() {
             const msg = messages.find(m => m.id === btn.dataset.id);
             if (msg && msg.userId === currentUser.id) {
                 editingMessageId = msg.id;
-                const editInput = document.getElementById('editMessageInput');
-                if (editInput) editInput.value = msg.content;
-                const editModal = document.getElementById('editMessageModal');
-                if (editModal) editModal.style.display = 'flex';
+                document.getElementById('editMessageInput').value = msg.content;
+                document.getElementById('editMessageModal').style.display = 'flex';
             }
         });
     });
@@ -1194,7 +1151,9 @@ function renderMessages() {
             const messageId = btn.dataset.id;
             const message = messages.find(m => m.id === messageId);
             if (message && canDeleteMessage(message, currentUser.id, currentServerId)) {
-                await deleteMessage(messageId);
+                if (confirm('Hapus pesan ini?')) {
+                    await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
+                }
             } else {
                 showNotification('Anda tidak memiliki izin untuk menghapus pesan ini!', 'error');
             }
@@ -1266,53 +1225,11 @@ function renderMembers() {
 }
 
 function showInviteModal(server) {
-    const inviteCodeInput = document.getElementById('inviteCode');
-    if (inviteCodeInput) inviteCodeInput.value = server.inviteCode;
-    const inviteModal = document.getElementById('inviteModal');
-    if (inviteModal) inviteModal.style.display = 'flex';
+    document.getElementById('inviteCode').value = server.inviteCode;
+    document.getElementById('inviteModal').style.display = 'flex';
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function closeModals() {
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        modal.style.display = 'none';
-    });
-}
-
-// ============ UPDATE UI ============
-
-function updateUI() {
-    const userAvatarDiv = document.getElementById('userAvatar');
-    const currentUsernameSpan = document.getElementById('currentUsername');
-    
-    if (currentUser && userAvatarDiv) {
-        const profile = getUserProfile(currentUser.id || currentUser.username);
-        if (profile.avatarUrl) {
-            userAvatarDiv.style.backgroundImage = `url(${profile.avatarUrl})`;
-            userAvatarDiv.style.backgroundSize = 'cover';
-            userAvatarDiv.style.backgroundPosition = 'center';
-            userAvatarDiv.textContent = '';
-        } else {
-            userAvatarDiv.style.backgroundImage = 'none';
-            userAvatarDiv.style.backgroundColor = '#5865f2';
-            userAvatarDiv.textContent = profile.avatar || currentUser.username.charAt(0).toUpperCase();
-        }
-        
-        if (currentUsernameSpan) {
-            currentUsernameSpan.textContent = profile.displayName || currentUser.username;
-        }
-    }
-}
-
-// ============ SETUP FUNCTIONS ============
-
+// ==================== SETUP FUNCTIONS ====================
 function setupEmojiPicker() {
     const emojis = ['😀', '😂', '🥰', '😎', '🤔', '😢', '😡', '👍', '🙏', '💀', '❤️', '🎉', '🔥', '✨', '⭐', '💯', '👋', '🙌', '🤝', '💪', '🧠', '👀', '💡', '🔑', '📚', '🎮', '⚽', '🏀', '🎵', '🎨'];
     
@@ -1324,14 +1241,13 @@ function setupEmojiPicker() {
         const div = document.createElement('div');
         div.className = 'sticker';
         div.textContent = emoji;
-        div.dataset.sticker = emoji;
-        div.addEventListener('click', async () => {
+        div.addEventListener('click', () => {
             const messageInput = document.getElementById('messageInput');
             if (messageInput) {
                 messageInput.value += emoji;
             }
             closeModals();
-            if (messageInput) messageInput.focus();
+            messageInput?.focus();
         });
         container.appendChild(div);
     });
@@ -1382,10 +1298,6 @@ function initMobileMenu() {
     if (openMembersBtn) {
         openMembersBtn.addEventListener('click', () => {
             middleSidebar.classList.add('open');
-            const membersSection = document.querySelector('.members-section');
-            if (membersSection) {
-                membersSection.scrollIntoView();
-            }
         });
     }
     
@@ -1403,21 +1315,19 @@ function initMobileMenu() {
     
     document.addEventListener('click', (e) => {
         if (window.innerWidth <= 768) {
-            if (leftSidebar && leftSidebar.classList.contains('open')) {
-                if (!leftSidebar.contains(e.target) && !openLeftBtn.contains(e.target)) {
+            if (leftSidebar?.classList.contains('open')) {
+                if (!leftSidebar.contains(e.target) && !openLeftBtn?.contains(e.target)) {
                     leftSidebar.classList.remove('open');
                 }
             }
-            if (middleSidebar && middleSidebar.classList.contains('open')) {
-                if (!middleSidebar.contains(e.target) && !openMembersBtn.contains(e.target)) {
+            if (middleSidebar?.classList.contains('open')) {
+                if (!middleSidebar.contains(e.target) && !openMembersBtn?.contains(e.target)) {
                     middleSidebar.classList.remove('open');
                 }
             }
         }
     });
 }
-
-// ============ SOCKET.IO EVENTS ============
 
 function setupSocketEvents() {
     socket.on('servers-updated', async (updatedServers) => {
@@ -1460,42 +1370,20 @@ function setupSocketEvents() {
     });
 }
 
-// ============ INITIALIZE APP ============
-
+// ==================== INITIALIZE APP ====================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('App initializing...');
+    console.log('Gathering App initializing...');
+    
     loadUserProfiles();
     await loadData();
     setupEmojiPicker();
     setupSocketEvents();
     initMobileMenu();
     
-    if (checkLogin()) {
-        const authPage = document.getElementById('authPage');
-        const mainApp = document.getElementById('mainApp');
-        
-        if (authPage) authPage.style.display = 'none';
-        if (mainApp) mainApp.style.display = 'flex';
-        
-        // Update UI dengan profil
-        updateUI();
-        
-        const userServers = getUserServers();
-        if (userServers.length > 0) {
-            selectServer(userServers[0].id);
-        } else {
-            renderServers();
-        }
-        
-        setupFileUpload();
-    }
-    
-    // Setup profile modal events
-    const userAvatarDiv = document.getElementById('userAvatar');
-    if (userAvatarDiv) {
-        userAvatarDiv.addEventListener('click', () => {
-            openProfileModal();
-        });
+    // Profile modal events
+    const userInfoBtn = document.getElementById('userInfoBtn');
+    if (userInfoBtn) {
+        userInfoBtn.addEventListener('click', openProfileModal);
     }
     
     document.getElementById('changeAvatarBtn')?.addEventListener('click', () => {
@@ -1510,7 +1398,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const userId = currentUser?.id || currentUser?.username;
                 await updateUserProfile(userId, { avatarUrl: avatarUrl });
                 
-                // Update tampilan avatar di modal
                 const avatarContainer = document.getElementById('profileAvatarLarge');
                 const avatarText = document.getElementById('profileAvatarText');
                 avatarContainer.style.backgroundImage = `url(${avatarUrl})`;
@@ -1529,254 +1416,217 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('cancelProfileBtn')?.addEventListener('click', closeProfileModal);
     document.getElementById('closeProfileBtn')?.addEventListener('click', closeProfileModal);
     
-    // Auth tab switching
-    const authTabs = document.querySelectorAll('.auth-tab');
-    authTabs.forEach(tab => {
+    if (checkLogin()) {
+        document.getElementById('authPage').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'flex';
+        
+        updateUI();
+        
+        const userServers = getUserServers();
+        if (userServers.length > 0) {
+            selectServer(userServers[0].id);
+        } else {
+            renderServers();
+        }
+        
+        setupFileUpload();
+    }
+    
+    // Auth tabs
+    document.querySelectorAll('.auth-tab').forEach(tab => {
         tab.addEventListener('click', () => {
-            authTabs.forEach(t => t.classList.remove('active'));
-            const forms = document.querySelectorAll('.auth-form');
-            forms.forEach(f => f.classList.remove('active'));
+            document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
             tab.classList.add('active');
-            const formId = `${tab.dataset.tab}Form`;
-            const form = document.getElementById(formId);
-            if (form) form.classList.add('active');
+            document.getElementById(`${tab.dataset.tab}Form`).classList.add('active');
         });
     });
     
     // Login
-    const loginBtn = document.getElementById('loginBtn');
-    if (loginBtn) {
-        loginBtn.addEventListener('click', async () => {
-            const username = document.getElementById('loginUsername').value;
-            const password = document.getElementById('loginPassword').value;
-            const result = await login(username, password);
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        const result = await login(
+            document.getElementById('loginUsername').value,
+            document.getElementById('loginPassword').value
+        );
+        
+        if (result.success) {
+            document.getElementById('authPage').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'flex';
+            updateUI();
             
-            if (result.success) {
-                document.getElementById('authPage').style.display = 'none';
-                document.getElementById('mainApp').style.display = 'flex';
-                
-                updateUI();
-                
-                const userServers = getUserServers();
-                if (userServers.length > 0) {
-                    selectServer(userServers[0].id);
-                } else {
-                    renderServers();
-                }
-                
-                setupFileUpload();
+            const userServers = getUserServers();
+            if (userServers.length > 0) {
+                selectServer(userServers[0].id);
             } else {
-                document.getElementById('loginError').textContent = result.message;
+                renderServers();
             }
-        });
-    }
+            
+            setupFileUpload();
+        } else {
+            document.getElementById('loginError').textContent = result.message;
+        }
+    });
     
     // Register
-    const registerBtn = document.getElementById('registerBtn');
-    if (registerBtn) {
-        registerBtn.addEventListener('click', async () => {
-            const username = document.getElementById('regUsername').value;
-            const email = document.getElementById('regEmail').value;
-            const password = document.getElementById('regPassword').value;
-            const confirm = document.getElementById('regConfirmPassword').value;
-            
-            const result = await register(username, email, password, confirm);
-            
-            if (result.success) {
-                alert(result.message);
-                document.querySelector('.auth-tab[data-tab="login"]').click();
-                document.getElementById('regUsername').value = '';
-                document.getElementById('regEmail').value = '';
-                document.getElementById('regPassword').value = '';
-                document.getElementById('regConfirmPassword').value = '';
-            } else {
-                document.getElementById('registerError').textContent = result.message;
-            }
-        });
-    }
+    document.getElementById('registerBtn').addEventListener('click', async () => {
+        const result = await register(
+            document.getElementById('regUsername').value,
+            document.getElementById('regEmail').value,
+            document.getElementById('regPassword').value,
+            document.getElementById('regConfirmPassword').value
+        );
+        
+        if (result.success) {
+            alert(result.message);
+            document.querySelector('.auth-tab[data-tab="login"]').click();
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regConfirmPassword').value = '';
+        } else {
+            document.getElementById('registerError').textContent = result.message;
+        }
+    });
     
     // Logout
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            logout();
-            document.getElementById('authPage').style.display = 'flex';
-            document.getElementById('mainApp').style.display = 'none';
-        });
-    }
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        logout();
+        document.getElementById('authPage').style.display = 'flex';
+        document.getElementById('mainApp').style.display = 'none';
+    });
     
     // Create Server
-    const createServerBtn = document.getElementById('createServerBtn');
-    if (createServerBtn) {
-        createServerBtn.addEventListener('click', () => {
-            document.getElementById('createServerModal').style.display = 'flex';
-            document.getElementById('newServerName').value = '';
-        });
-    }
+    document.getElementById('createServerBtn').addEventListener('click', () => {
+        document.getElementById('createServerModal').style.display = 'flex';
+        document.getElementById('newServerName').value = '';
+    });
     
-    const confirmCreateServerBtn = document.getElementById('confirmCreateServerBtn');
-    if (confirmCreateServerBtn) {
-        confirmCreateServerBtn.addEventListener('click', async () => {
-            const name = document.getElementById('newServerName').value.trim();
-            if (name) {
-                const newServer = await createServer(name);
-                closeModals();
-                if (newServer) {
-                    renderServers();
-                    selectServer(newServer.id);
-                }
-            } else {
-                showNotification('Nama server tidak boleh kosong', 'error');
+    document.getElementById('confirmCreateServerBtn').addEventListener('click', async () => {
+        const name = document.getElementById('newServerName').value.trim();
+        if (name) {
+            const newServer = await createServer(name);
+            closeModals();
+            if (newServer) {
+                renderServers();
+                selectServer(newServer.id);
             }
-        });
-    }
+        } else {
+            showNotification('Nama server tidak boleh kosong', 'error');
+        }
+    });
+    
+    document.getElementById('cancelCreateServerBtn').addEventListener('click', closeModals);
     
     // Join Server
-    const joinServerBtn = document.getElementById('joinServerBtn');
-    if (joinServerBtn) {
-        joinServerBtn.addEventListener('click', async () => {
-            const code = document.getElementById('joinServerCode').value;
-            const result = await joinServer(code);
-            if (result.success) {
-                document.getElementById('joinServerCode').value = '';
-                renderServers();
-                if (result.server) {
-                    selectServer(result.server.id);
-                }
+    document.getElementById('joinServerBtn').addEventListener('click', async () => {
+        const code = document.getElementById('joinServerCode').value;
+        const result = await joinServer(code);
+        if (result.success) {
+            document.getElementById('joinServerCode').value = '';
+            renderServers();
+            if (result.server) {
+                selectServer(result.server.id);
             }
-        });
-    }
+        }
+    });
     
     // Add Channel
-    const addChannelBtn = document.getElementById('addChannelBtn');
-    if (addChannelBtn) {
-        addChannelBtn.addEventListener('click', () => {
-            if (!currentServerId) {
-                showNotification('Pilih server terlebih dahulu', 'error');
-                return;
-            }
-            
-            if (!canCreateChannel(currentServerId, currentUser.id)) {
-                showNotification('Anda tidak memiliki izin untuk membuat channel!', 'error');
-                return;
-            }
-            
-            document.getElementById('channelModal').style.display = 'flex';
-            document.getElementById('channelName').value = '';
-        });
-    }
+    document.getElementById('addChannelBtn').addEventListener('click', () => {
+        if (!currentServerId) {
+            showNotification('Pilih server terlebih dahulu', 'error');
+            return;
+        }
+        
+        if (!canCreateChannel(currentServerId, currentUser.id)) {
+            showNotification('Anda tidak memiliki izin untuk membuat channel!', 'error');
+            return;
+        }
+        
+        document.getElementById('channelModal').style.display = 'flex';
+        document.getElementById('channelName').value = '';
+    });
     
-    const saveChannelBtn = document.getElementById('saveChannelBtn');
-    if (saveChannelBtn) {
-        saveChannelBtn.addEventListener('click', async () => {
-            const name = document.getElementById('channelName').value.trim();
-            if (name) {
-                await addChannel(currentServerId, name);
-                closeModals();
-            } else {
-                showNotification('Nama channel tidak boleh kosong', 'error');
-            }
-        });
-    }
+    document.getElementById('saveChannelBtn').addEventListener('click', async () => {
+        const name = document.getElementById('channelName').value.trim();
+        if (name) {
+            await addChannel(currentServerId, name);
+            closeModals();
+        } else {
+            showNotification('Nama channel tidak boleh kosong', 'error');
+        }
+    });
+    
+    document.getElementById('cancelChannelBtn').addEventListener('click', closeModals);
     
     // Send Message
-    const sendMessageBtn = document.getElementById('sendMessageBtn');
-    if (sendMessageBtn) {
-        sendMessageBtn.addEventListener('click', async () => {
+    document.getElementById('sendMessageBtn').addEventListener('click', async () => {
+        const input = document.getElementById('messageInput');
+        await sendMessage(input.value);
+        input.value = '';
+        input.focus();
+    });
+    
+    document.getElementById('messageInput').addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             const input = document.getElementById('messageInput');
             await sendMessage(input.value);
             input.value = '';
             input.focus();
-        });
-    }
-    
-    const messageInput = document.getElementById('messageInput');
-    if (messageInput) {
-        messageInput.addEventListener('keypress', async (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                await sendMessage(messageInput.value);
-                messageInput.value = '';
-                messageInput.focus();
-            }
-        });
-    }
-    
-    // Sticker button
-    const stickerBtn = document.getElementById('stickerBtn');
-    if (stickerBtn) {
-        stickerBtn.addEventListener('click', () => {
-            document.getElementById('stickerModal').style.display = 'flex';
-        });
-    }
-    
-    const closeStickerBtn = document.getElementById('closeStickerBtn');
-    if (closeStickerBtn) {
-        closeStickerBtn.addEventListener('click', closeModals);
-    }
-    
-    // Edit Message
-    const saveEditBtn = document.getElementById('saveEditBtn');
-    if (saveEditBtn) {
-        saveEditBtn.addEventListener('click', async () => {
-            const newContent = document.getElementById('editMessageInput').value.trim();
-            if (newContent && editingMessageId) {
-                await fetch(`${API_URL}/messages/${editingMessageId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: newContent })
-                });
-                closeModals();
-                editingMessageId = null;
-            }
-        });
-    }
-    
-    // Copy Invite
-    const copyInviteBtn = document.getElementById('copyInviteBtn');
-    if (copyInviteBtn) {
-        copyInviteBtn.addEventListener('click', () => {
-            const inviteCodeInput = document.getElementById('inviteCode');
-            if (inviteCodeInput) {
-                inviteCodeInput.select();
-                document.execCommand('copy');
-                showNotification('Kode invite disalin!', 'success');
-            }
-        });
-    }
-    
-    // Role management
-    const makeModeratorBtn = document.getElementById('makeModeratorBtn');
-    if (makeModeratorBtn) {
-        makeModeratorBtn.addEventListener('click', async () => {
-            if (selectedMemberId) {
-                await updateMemberRole(selectedMemberId, 'moderator');
-                closeModals();
-            }
-        });
-    }
-    
-    const makeMemberBtn = document.getElementById('makeMemberBtn');
-    if (makeMemberBtn) {
-        makeMemberBtn.addEventListener('click', async () => {
-            if (selectedMemberId) {
-                await updateMemberRole(selectedMemberId, 'member');
-                closeModals();
-            }
-        });
-    }
-    
-    const closeRoleBtn = document.getElementById('closeRoleBtn');
-    if (closeRoleBtn) {
-        closeRoleBtn.addEventListener('click', closeModals);
-    }
-    
-    // Close Modals
-    const cancelButtons = document.querySelectorAll('.cancel-btn, #closeInviteBtn, #closeStickerBtn');
-    cancelButtons.forEach(btn => {
-        btn.addEventListener('click', closeModals);
+        }
     });
     
+    // Sticker
+    document.getElementById('stickerBtn').addEventListener('click', () => {
+        document.getElementById('stickerModal').style.display = 'flex';
+    });
+    
+    document.getElementById('closeStickerBtn').addEventListener('click', closeModals);
+    
+    // Edit Message
+    document.getElementById('saveEditBtn').addEventListener('click', async () => {
+        const newContent = document.getElementById('editMessageInput').value.trim();
+        if (newContent && editingMessageId) {
+            await fetch(`${API_URL}/messages/${editingMessageId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: newContent })
+            });
+            closeModals();
+            editingMessageId = null;
+        }
+    });
+    
+    document.getElementById('cancelEditBtn').addEventListener('click', closeModals);
+    
+    // Copy Invite
+    document.getElementById('copyInviteBtn').addEventListener('click', () => {
+        const inviteCodeInput = document.getElementById('inviteCode');
+        inviteCodeInput.select();
+        document.execCommand('copy');
+        showNotification('Kode invite disalin!', 'success');
+    });
+    
+    document.getElementById('closeInviteBtn').addEventListener('click', closeModals);
+    
+    // Role management
+    document.getElementById('makeModeratorBtn').addEventListener('click', async () => {
+        if (selectedMemberId) {
+            await updateMemberRole(selectedMemberId, 'moderator');
+            closeModals();
+        }
+    });
+    
+    document.getElementById('makeMemberBtn').addEventListener('click', async () => {
+        if (selectedMemberId) {
+            await updateMemberRole(selectedMemberId, 'member');
+            closeModals();
+        }
+    });
+    
+    document.getElementById('closeRoleBtn').addEventListener('click', closeModals);
+    
+    // Close modals on outside click
     window.addEventListener('click', (e) => {
         if (e.target.classList.contains('modal')) closeModals();
     });

@@ -28,16 +28,28 @@ body {
 .auth-box {
     background-color: #2b2d31;
     padding: 40px;
-    border-radius: 8px;
-    width: 400px;
+    border-radius: 16px;
+    width: 420px;
     max-width: 90%;
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
 .auth-box h1 {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 8px;
     color: #fff;
+    font-size: 28px;
+}
+
+.auth-box h1 i {
+    margin-right: 8px;
+}
+
+.auth-subtitle {
+    text-align: center;
+    color: #949ba4;
+    font-size: 13px;
+    margin-bottom: 24px;
 }
 
 .auth-tabs {
@@ -53,14 +65,15 @@ body {
     border: none;
     color: #949ba4;
     cursor: pointer;
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
     transition: all 0.2s;
 }
 
 .auth-tab.active {
-    color: #5865f2;
-    border-bottom: 2px solid #5865f2;
+    background-color: #5865f2;
+    color: white;
 }
 
 .auth-form {
@@ -73,11 +86,11 @@ body {
 
 .auth-form input {
     width: 100%;
-    padding: 12px;
+    padding: 12px 14px;
     margin-bottom: 12px;
     background-color: #1e1f22;
     border: 1px solid #404249;
-    border-radius: 4px;
+    border-radius: 8px;
     color: #dbdee1;
     font-size: 14px;
 }
@@ -92,11 +105,12 @@ body {
     padding: 12px;
     background-color: #5865f2;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
     color: white;
     font-weight: 600;
     cursor: pointer;
     margin-top: 10px;
+    transition: background-color 0.2s;
 }
 
 .auth-btn:hover {
@@ -116,7 +130,7 @@ body {
     height: 100vh;
 }
 
-/* ============ LEFT SIDEBAR (User Info + Servers) ============ */
+/* ============ LEFT SIDEBAR ============ */
 .left-sidebar {
     width: 280px;
     background-color: #1e1f22;
@@ -157,6 +171,12 @@ body {
     align-items: center;
     gap: 12px;
     border-bottom: 1px solid #1e1f22;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.user-info:hover {
+    background-color: #35373d;
 }
 
 .user-avatar {
@@ -169,6 +189,11 @@ body {
     justify-content: center;
     font-weight: bold;
     font-size: 18px;
+    transition: opacity 0.2s;
+}
+
+.user-avatar:hover {
+    opacity: 0.8;
 }
 
 .user-details {
@@ -182,11 +207,6 @@ body {
 .user-details span:first-child {
     font-weight: 600;
     font-size: 14px;
-}
-
-.user-discriminator {
-    font-size: 11px;
-    color: #949ba4;
 }
 
 .logout-btn {
@@ -221,6 +241,11 @@ body {
     font-size: 12px;
     text-transform: uppercase;
     color: #949ba4;
+    font-weight: 600;
+}
+
+.section-header h4 i {
+    margin-right: 6px;
 }
 
 .add-btn {
@@ -302,11 +327,6 @@ body {
 
 .leave-server-btn:hover {
     color: #ed4245;
-    background-color: rgba(237, 66, 69, 0.1);
-}
-
-.leave-server-btn i {
-    font-size: 14px;
 }
 
 /* Join Section */
@@ -317,7 +337,7 @@ body {
 
 .join-section input {
     width: 100%;
-    padding: 10px;
+    padding: 10px 12px;
     background-color: #2b2d31;
     border: 1px solid #404249;
     border-radius: 8px;
@@ -340,13 +360,14 @@ body {
     color: white;
     cursor: pointer;
     font-weight: 500;
+    transition: background-color 0.2s;
 }
 
 .join-btn:hover {
     background-color: #4752c4;
 }
 
-/* ============ MIDDLE SIDEBAR (Channels + Members) ============ */
+/* ============ MIDDLE SIDEBAR ============ */
 .middle-sidebar {
     width: 260px;
     background-color: #2b2d31;
@@ -525,7 +546,7 @@ body {
     display: flex;
     flex-direction: column;
     background-color: #313338;
-    min-width: 0; /* Penting untuk flex di mobile */
+    min-width: 0;
 }
 
 .chat-header {
@@ -971,66 +992,7 @@ body {
     background-color: #4e5058;
 }
 
-/* Notification */
-#notification {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 10px 18px;
-    border-radius: 8px;
-    color: white;
-    font-size: 13px;
-    z-index: 9999;
-    animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-    width: 6px;
-}
-
-::-webkit-scrollbar-track {
-    background: #1e1f22;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #35373d;
-    border-radius: 4px;
-}
-
-/* Date Separator Styles */
-.date-separator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 20px 0;
-    position: relative;
-}
-
-.date-separator-line {
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #404249, #404249, transparent);
-}
-
-.date-separator-text {
-    padding: 4px 12px;
-    background-color: #2b2d31;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 500;
-    color: #949ba4;
-    letter-spacing: 0.5px;
-    margin: 0 12px;
-    white-space: nowrap;
-}
-
-/* Profile Modal Styles */
+/* Profile Modal */
 .profile-avatar-container {
     position: relative;
     display: inline-block;
@@ -1110,27 +1072,67 @@ body {
     cursor: not-allowed;
 }
 
-/* Avatar di user info sidebar */
-.user-info .user-avatar {
-    cursor: pointer;
-    transition: opacity 0.2s;
+/* Date Separator */
+.date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 20px 0;
+    position: relative;
 }
 
-.user-info .user-avatar:hover {
-    opacity: 0.8;
+.date-separator-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #404249, #404249, transparent);
 }
 
-/* Untuk memastikan date separator tidak mengganggu layout mobile */
+.date-separator-text {
+    padding: 4px 12px;
+    background-color: #2b2d31;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #949ba4;
+    letter-spacing: 0.5px;
+    margin: 0 12px;
+    white-space: nowrap;
+}
+
+/* Notification */
+#notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e1f22;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #35373d;
+    border-radius: 4px;
+}
+
+/* Mobile Responsive */
 @media (max-width: 768px) {
-    .date-separator-text {
-        font-size: 10px;
-        padding: 3px 10px;
-    }
-}
-
-/* ============ MOBILE RESPONSIVE ============ */
-@media (max-width: 768px) {
-    /* Sembunyikan sidebar di mobile */
     .left-sidebar {
         position: fixed;
         top: 0;
@@ -1169,7 +1171,6 @@ body {
         display: flex;
     }
 
-    /* Chat area */
     .chat-area {
         width: 100%;
         display: flex;
@@ -1178,7 +1179,6 @@ body {
         position: relative;
     }
 
-    /* Chat header - tetap di atas */
     .chat-header {
         padding: 12px 16px;
         background-color: #313338;
@@ -1189,52 +1189,27 @@ body {
         flex-shrink: 0;
     }
 
-    .chat-header-left {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
     .chat-header-left h3 {
         font-size: 14px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 6px;
         max-width: 200px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
-    /* Mobile menu buttons */
     .mobile-menu-btn {
         display: flex;
         align-items: center;
         justify-content: center;
-        background: none;
-        border: none;
-        color: #dbdee1;
-        font-size: 18px;
-        cursor: pointer;
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
     }
 
-    .mobile-menu-btn:hover {
-        background-color: #2b2d31;
-    }
-
-    /* Messages container - scrollable, dengan padding bottom */
     .messages-container {
         flex: 1;
         overflow-y: auto;
         padding: 12px;
-        padding-bottom: 80px; /* Beri ruang untuk input container */
+        padding-bottom: 80px;
     }
 
-    /* Message input container - TIDAK FIXED, mengikuti flow */
     .message-input-container {
         flex-shrink: 0;
         background-color: #313338;
@@ -1246,18 +1221,8 @@ body {
         right: 0;
     }
 
-    /* File preview area */
     .file-preview-area {
         margin: 0 12px 8px 12px;
-        padding: 8px 12px;
-        background-color: #2b2d31;
-        border-radius: 8px;
-        border-left: 4px solid #5865f2;
-    }
-
-    /* Saat keyboard muncul di mobile, scroll ke pesan terbaru */
-    .messages-container:focus-within {
-        scroll-behavior: smooth;
     }
 
     .message-file img {
