@@ -489,6 +489,68 @@ app.delete('/api/messages/:id', async (req, res) => {
     }
 });
 
+// ========== ROUTES PROFILES ==========
+// Get user profile
+app.get('/api/profiles/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        let profile = await db.collection('profiles').findOne({ userId });
+        
+        if (!profile) {
+            // Buat profile default jika belum ada
+            const user = await db.collection('users').findOne({ $or: [{ id: userId }, { username: userId }] });
+            const defaultProfile = {
+                id: generateId(),
+                userId: userId,
+                displayName: user?.username || userId,
+                bio: 'Anggota Gathering 🎉',
+                avatarUrl: null,
+                memberSince: new Date().toISOString()
+            };
+            await db.collection('profiles').insertOne(defaultProfile);
+            profile = defaultProfile;
+        }
+        
+        res.json(profile);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update user profile
+app.put('/api/profiles/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { displayName, bio, avatarUrl } = req.body;
+        
+        const updateData = {};
+        if (displayName !== undefined) updateData.displayName = displayName;
+        if (bio !== undefined) updateData.bio = bio;
+        if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
+        
+        const result = await db.collection('profiles').findOneAndUpdate(
+            { userId },
+            { $set: { ...updateData, updatedAt: new Date().toISOString() } },
+            { upsert: true, returnDocument: 'after' }
+        );
+        
+        io.emit('profile-updated', { userId, profile: result.value });
+        res.json(result.value);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get all profiles (optional)
+app.get('/api/profiles', async (req, res) => {
+    try {
+        const profiles = await db.collection('profiles').find({}).toArray();
+        res.json(profiles);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ========== SOCKET.IO ==========
 io.on('connection', (socket) => {
     console.log('Client connected:', socket.id);

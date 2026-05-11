@@ -69,38 +69,78 @@ function closeModals() {
 }
 
 // ==================== PROFILE FUNCTIONS ====================
-function loadUserProfiles() {
-    const saved = localStorage.getItem('gathering_profiles');
-    if (saved) {
-        userProfiles = JSON.parse(saved);
+async function loadUserProfiles() {
+    try {
+        const response = await fetch(`${API_URL}/profiles`);
+        if (response.ok) {
+            const profiles = await response.json();
+            // Convert array ke object untuk akses mudah
+            profiles.forEach(profile => {
+                userProfiles[profile.userId] = profile;
+            });
+        }
+    } catch (error) {
+        console.error('Error loading profiles:', error);
     }
+}
+
+// Dapatkan username asli dari user ID
+function getUsernameById(userId) {
+    const user = users.find(u => u.id === userId || u.username === userId);
+    return user ? (user.username || userId) : userId;
 }
 
 function saveUserProfiles() {
     localStorage.setItem('gathering_profiles', JSON.stringify(userProfiles));
 }
 
-function getUserProfile(userId) {
+// Get user profile dari database
+async function getUserProfile(userId) {
     const idStr = String(userId);
-    if (!userProfiles[idStr]) {
-        userProfiles[idStr] = {
-            displayName: idStr,
-            bio: 'Anggota Gathering 🎉',
-            avatar: idStr.charAt(0).toUpperCase(),
-            avatarUrl: null,
-            memberSince: new Date().toISOString()
-        };
-        saveUserProfiles();
+    
+    // Cek di cache dulu
+    if (userProfiles[idStr]) {
+        return userProfiles[idStr];
     }
-    return userProfiles[idStr];
+    
+    try {
+        const response = await fetch(`${API_URL}/profiles/${encodeURIComponent(idStr)}`);
+        if (response.ok) {
+            const profile = await response.json();
+            userProfiles[idStr] = profile;
+            return profile;
+        }
+    } catch (error) {
+        console.error('Error getting profile:', error);
+    }
+    
+    // Fallback jika error
+    return {
+        userId: idStr,
+        displayName: getUsernameById(idStr),
+        bio: 'Anggota Gathering 🎉',
+        avatarUrl: null,
+        memberSince: new Date().toISOString()
+    };
 }
 
-function updateUI() {
+// Update UI setelah login/profile berubah
+async function updateUI() {
     const userAvatarDiv = document.getElementById('userAvatar');
     const currentUsernameSpan = document.getElementById('currentUsername');
     
     if (currentUser && userAvatarDiv) {
-        const profile = getUserProfile(currentUser.id || currentUser.username);
+        const userId = currentUser.id || currentUser.username;
+        const username = currentUser.username || userId;
+        const profile = await getUserProfile(userId);
+        
+        // Tampilkan displayName jika ada,否则 tampilkan username
+        const displayName = profile.displayName && profile.displayName !== userId ? profile.displayName : username;
+        
+        if (currentUsernameSpan) {
+            currentUsernameSpan.textContent = displayName;
+        }
+        
         if (profile.avatarUrl) {
             userAvatarDiv.style.backgroundImage = `url(${profile.avatarUrl})`;
             userAvatarDiv.style.backgroundSize = 'cover';
@@ -109,31 +149,43 @@ function updateUI() {
         } else {
             userAvatarDiv.style.backgroundImage = 'none';
             userAvatarDiv.style.backgroundColor = '#5865f2';
-            userAvatarDiv.textContent = profile.avatar || currentUser.username.charAt(0).toUpperCase();
-        }
-        
-        if (currentUsernameSpan) {
-            currentUsernameSpan.textContent = profile.displayName || currentUser.username;
+            userAvatarDiv.textContent = username.charAt(0).toUpperCase();
         }
     }
 }
 
+// Update user profile ke database
 async function updateUserProfile(userId, data) {
     const idStr = String(userId);
-    if (!userProfiles[idStr]) {
-        getUserProfile(userId);
+    
+    try {
+        const response = await fetch(`${API_URL}/profiles/${encodeURIComponent(idStr)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            const updatedProfile = await response.json();
+            userProfiles[idStr] = updatedProfile;
+            
+            // Update UI
+            await updateUI();
+            
+            showNotification('Profil berhasil diperbarui!', 'success');
+            return updatedProfile;
+        } else {
+            showNotification('Gagal memperbarui profil', 'error');
+            return null;
+        }
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        showNotification('Error memperbarui profil', 'error');
+        return null;
     }
-    
-    if (data.displayName !== undefined) userProfiles[idStr].displayName = data.displayName;
-    if (data.bio !== undefined) userProfiles[idStr].bio = data.bio;
-    if (data.avatarUrl !== undefined) userProfiles[idStr].avatarUrl = data.avatarUrl;
-    if (data.avatar !== undefined) userProfiles[idStr].avatar = data.avatar;
-    
-    saveUserProfiles();
-    updateUI();
-    showNotification('Profil berhasil diperbarui!', 'success');
 }
 
+// Upload avatar ke Cloudinary dan simpan ke database
 async function uploadAvatar(file) {
     const formData = new FormData();
     formData.append('file', file);
@@ -161,17 +213,22 @@ async function uploadAvatar(file) {
     }
 }
 
-function openProfileModal() {
+// Open profile modal
+async function openProfileModal() {
     const userId = currentUser?.id || currentUser?.username;
     if (!userId) {
         showNotification('Login terlebih dahulu!', 'error');
         return;
     }
     
-    const profile = getUserProfile(userId);
+    const username = currentUser?.username || userId;
+    const profile = await getUserProfile(userId);
     
-    document.getElementById('profileDisplayName').value = profile.displayName || userId;
-    document.getElementById('profileUsername').value = userId;
+    // Tampilkan displayName yang sudah ada, atau username sebagai default
+    const displayNameValue = (profile.displayName && profile.displayName !== userId) ? profile.displayName : username;
+    
+    document.getElementById('profileDisplayName').value = displayNameValue;
+    document.getElementById('profileUsername').value = username;
     document.getElementById('profileBio').value = profile.bio || '';
     
     // Set avatar
@@ -185,7 +242,7 @@ function openProfileModal() {
     } else {
         avatarContainer.style.backgroundImage = 'none';
         avatarContainer.style.backgroundColor = '#5865f2';
-        avatarText.textContent = profile.avatar || userId.charAt(0).toUpperCase();
+        avatarText.textContent = username.charAt(0).toUpperCase();
         avatarText.style.display = 'flex';
     }
     
@@ -204,6 +261,7 @@ function closeProfileModal() {
     document.getElementById('profileModal').style.display = 'none';
 }
 
+// Save profile ke database
 async function saveProfile() {
     const userId = currentUser?.id || currentUser?.username;
     if (!userId) return;
@@ -328,13 +386,14 @@ function renderDateSeparator(date) {
 
 // ==================== API FUNCTIONS ====================
 async function loadData() {
-    try {
-        const [usersRes, serversRes, membersRes, channelsRes, messagesRes] = await Promise.all([
+        try {
+        const [usersRes, serversRes, membersRes, channelsRes, messagesRes, profilesRes] = await Promise.all([
             fetch(`${API_URL}/users`),
             fetch(`${API_URL}/servers`),
             fetch(`${API_URL}/serverMembers`),
             fetch(`${API_URL}/channels`),
-            fetch(`${API_URL}/messages`)
+            fetch(`${API_URL}/messages`),
+            fetch(`${API_URL}/profiles`)
         ]);
         
         users = await usersRes.json();
@@ -342,6 +401,14 @@ async function loadData() {
         serverMembers = await membersRes.json();
         channels = await channelsRes.json();
         messages = await messagesRes.json();
+        
+        // Load profiles ke cache
+        if (profilesRes.ok) {
+            const profiles = await profilesRes.json();
+            profiles.forEach(profile => {
+                userProfiles[profile.userId] = profile;
+            });
+        }
     } catch (error) {
         console.error('Error loading data:', error);
     }
@@ -941,7 +1008,8 @@ function renderServers() {
     });
 }
 
-function selectServer(serverId) {
+// Update selectServer menjadi async
+async function selectServer(serverId) {
     currentServerId = serverId;
     currentChannelId = null;
     renderServers();
@@ -956,7 +1024,7 @@ function selectServer(serverId) {
         renderMessages();
     }
     
-    renderMembers();
+    await renderMembers();
 }
 
 function updateServerInfo() {
@@ -1052,7 +1120,8 @@ function selectChannel(channelId) {
     renderMessages();
 }
 
-function renderMessages() {
+// Perbaiki renderMessages
+async function renderMessages() {
     const container = document.getElementById('messagesContainer');
     if (!container) return;
     
@@ -1073,7 +1142,7 @@ function renderMessages() {
     container.innerHTML = '';
     let lastDate = null;
     
-    sortedMessages.forEach(msg => {
+    for (const msg of sortedMessages) {
         const msgDate = new Date(msg.timestamp);
         const currentDateStr = getDateString(msgDate);
         
@@ -1086,6 +1155,16 @@ function renderMessages() {
         div.className = 'message';
         const timeStr = msgDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
         const canDelete = canDeleteMessage(msg, currentUser.id, currentServerId);
+        
+        // Dapatkan displayName untuk pengirim pesan
+        let senderName = msg.username;
+        const senderUser = users.find(u => u.id === msg.userId || u.username === msg.userId);
+        if (senderUser) {
+            const senderProfile = await getUserProfile(senderUser.id || senderUser.username);
+            senderName = (senderProfile.displayName && senderProfile.displayName !== (senderUser.id || senderUser.username)) 
+                ? senderProfile.displayName 
+                : senderUser.username;
+        }
 
         let fileHtml = '';
         if (msg.fileUrl) {
@@ -1118,7 +1197,7 @@ function renderMessages() {
         
         div.innerHTML = `
             <div class="message-header">
-                <span class="message-author">${escapeHtml(msg.username)}</span>
+                <span class="message-author">${escapeHtml(senderName)}</span>
                 <span class="message-time">${timeStr}</span>
                 ${msg.editedAt ? '<span class="edited-indicator">(edited)</span>' : ''}
             </div>
@@ -1133,8 +1212,9 @@ function renderMessages() {
         `;
         
         container.appendChild(div);
-    });
+    }
     
+    // Event listeners untuk edit message
     document.querySelectorAll('.edit-msg').forEach(btn => {
         btn.addEventListener('click', () => {
             const msg = messages.find(m => m.id === btn.dataset.id);
@@ -1146,6 +1226,7 @@ function renderMessages() {
         });
     });
     
+    // Event listeners untuk delete message
     document.querySelectorAll('.delete-msg').forEach(btn => {
         btn.addEventListener('click', async () => {
             const messageId = btn.dataset.id;
@@ -1163,7 +1244,8 @@ function renderMessages() {
     container.scrollTop = container.scrollHeight;
 }
 
-function renderMembers() {
+// Render members - update untuk async
+async function renderMembers() {
     const container = document.getElementById('membersList');
     if (!container) return;
     
@@ -1181,11 +1263,16 @@ function renderMembers() {
     }
     
     container.innerHTML = '';
-    members.forEach(member => {
+    
+    for (const member of members) {
         const user = users.find(u => u.id === member.userId);
         if (user) {
             const isMemberOwner = member.role === 'owner' || (servers.find(s => s.id === currentServerId)?.ownerId === member.userId);
             const isMemberModerator = member.role === 'moderator';
+            
+            // Ambil profile dari database
+            const profile = await getUserProfile(user.id || user.username);
+            const displayName = (profile.displayName && profile.displayName !== (user.id || user.username)) ? profile.displayName : user.username;
             
             let roleBadge = '';
             if (isMemberOwner) {
@@ -1198,20 +1285,20 @@ function renderMembers() {
             div.className = 'member-item';
             div.innerHTML = `
                 <div class="member-info">
-                    <div class="member-avatar">${user.avatar}</div>
+                    <div class="member-avatar">${user.avatar || user.username.charAt(0).toUpperCase()}</div>
                     <div class="member-name">
-                        ${escapeHtml(user.username)} ${roleBadge}
+                        ${escapeHtml(displayName)} ${roleBadge}
                     </div>
                 </div>
                 ${currentUserIsOwner && !isMemberOwner && member.userId !== currentUser.id ? `
-                    <button class="member-role-btn" data-member-id="${member.id}" data-member-name="${escapeHtml(user.username)}">
+                    <button class="member-role-btn" data-member-id="${member.id}" data-member-name="${escapeHtml(displayName)}">
                         <i class="fas fa-user-cog"></i>
                     </button>
                 ` : ''}
             `;
             container.appendChild(div);
         }
-    });
+    }
     
     document.querySelectorAll('.member-role-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
