@@ -1131,8 +1131,30 @@ body {
     border-radius: 4px;
 }
 
-/* Mobile Responsive */
+/* ============ MOBILE RESPONSIVE (ALL DEVICES) ============ */
+
+/* Tablet (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .left-sidebar {
+        width: 240px;
+    }
+    
+    .middle-sidebar {
+        width: 220px;
+    }
+    
+    .chat-header-left h3 {
+        font-size: 13px;
+        max-width: 180px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+/* Mobile Landscape (max-width: 768px) */
 @media (max-width: 768px) {
+    /* Sidebar menjadi slide menu */
     .left-sidebar {
         position: fixed;
         top: 0;
@@ -1157,20 +1179,21 @@ body {
         bottom: 0;
         width: 280px;
         z-index: 300;
-        transform: translateX(125%);
+        transform: translateX(-100%);
         transition: transform 0.3s ease;
         border-right: none;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
     }
 
     .middle-sidebar.open {
-        transform: translateX(35%);
+        transform: translateX(0);
     }
 
     .mobile-sidebar-header {
         display: flex;
     }
 
+    /* Chat area full width */
     .chat-area {
         width: 100%;
         display: flex;
@@ -1179,6 +1202,7 @@ body {
         position: relative;
     }
 
+    /* Chat header - fixed di atas */
     .chat-header {
         padding: 12px 16px;
         background-color: #313338;
@@ -1191,25 +1215,28 @@ body {
 
     .chat-header-left h3 {
         font-size: 14px;
-        max-width: 200px;
+        max-width: 160px;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap;
     }
 
+    /* Mobile menu buttons */
     .mobile-menu-btn {
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
+    /* Messages container */
     .messages-container {
         flex: 1;
         overflow-y: auto;
         padding: 12px;
-        padding-bottom: 80px;
+        padding-bottom: 100px;
     }
 
+    /* Message input container - fixed di bottom */
     .message-input-container {
         flex-shrink: 0;
         background-color: #313338;
@@ -1219,69 +1246,435 @@ body {
         bottom: 0;
         left: 0;
         right: 0;
+        z-index: 99;
     }
 
+    .message-toolbar {
+        margin-bottom: 6px;
+    }
+
+    .toolbar-btn {
+        padding: 5px;
+        font-size: 14px;
+    }
+
+    .message-input-wrapper textarea {
+        font-size: 13px;
+        padding: 8px 12px;
+        padding-right: 50px;
+    }
+
+    .sticker-btn {
+        right: 50px;
+        bottom: 6px;
+        font-size: 16px;
+    }
+
+    .send-btn {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+
+    /* File preview area */
     .file-preview-area {
         margin: 0 12px 8px 12px;
+        padding: 6px 10px;
+    }
+
+    .preview-image {
+        max-width: 60px;
+        max-height: 50px;
+    }
+
+    .preview-file {
+        padding: 4px 8px;
+        gap: 6px;
+    }
+
+    .preview-file i {
+        font-size: 20px;
+    }
+
+    .preview-file .file-name {
+        font-size: 11px;
+    }
+
+    /* Messages */
+    .message {
+        padding: 6px 10px;
+        margin-bottom: 12px;
+    }
+
+    .message-author {
+        font-size: 13px;
+    }
+
+    .message-time {
+        font-size: 10px;
+    }
+
+    .message-text {
+        font-size: 13px;
     }
 
     .message-file img {
-        max-width: 200px;
+        max-width: 180px;
+        max-height: 150px;
     }
 
     .message-file video {
-        max-width: 250px;
+        max-width: 220px;
+        max-height: 180px;
     }
 
+    .file-attachment {
+        padding: 6px 10px;
+        gap: 8px;
+    }
+
+    .file-attachment i {
+        font-size: 18px;
+    }
+
+    .file-name {
+        font-size: 11px;
+    }
+
+    .file-size {
+        font-size: 9px;
+    }
+
+    /* Date separator */
+    .date-separator-text {
+        font-size: 10px;
+        padding: 3px 10px;
+    }
+
+    /* Member item */
+    .member-item {
+        padding: 6px;
+    }
+
+    .member-avatar {
+        width: 24px;
+        height: 24px;
+        font-size: 10px;
+    }
+
+    .member-name {
+        font-size: 12px;
+    }
+
+    /* Server item */
+    .server-item {
+        padding: 8px 10px;
+    }
+
+    .server-name {
+        font-size: 13px;
+    }
+
+    /* Channel item */
+    .channel-item {
+        padding: 5px 10px;
+    }
+
+    .channel-name {
+        font-size: 13px;
+    }
+
+    /* Modals */
     .sticker-modal {
         width: 95%;
     }
 
     .sticker-grid {
         grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 15px;
     }
 
-    .toolbar-btn {
+    .sticker {
+        font-size: 24px;
         padding: 6px;
     }
 
-    .send-btn {
-        padding: 8px 12px;
+    .modal-content {
+        width: 95%;
+        max-width: 95%;
     }
 
-    .message-input-wrapper textarea {
-        padding-right: 50px;
+    .modal-header h3 {
+        font-size: 16px;
     }
 
-    .sticker-btn {
-        right: 55px;
-        bottom: 12px;
+    .modal-content input,
+    .modal-content textarea {
+        padding: 10px;
+        font-size: 13px;
+        width: calc(100% - 30px);
+        margin: 12px 15px;
+    }
+
+    /* Profile modal */
+    .profile-avatar-large {
+        width: 80px;
+        height: 80px;
+        font-size: 36px;
+    }
+
+    .profile-avatar-edit {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+
+    .profile-field label {
+        font-size: 11px;
+    }
+
+    .profile-field input,
+    .profile-field textarea {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
+
+    /* Auth page */
+    .auth-box {
+        padding: 30px 20px;
+    }
+
+    .auth-box h1 {
+        font-size: 24px;
     }
 }
 
+/* Mobile Portrait (max-width: 480px) untuk iPhone SE, iPhone 5/6/7/8 */
 @media (max-width: 480px) {
-    .sticker-grid {
-        grid-template-columns: repeat(3, 1fr);
+    /* Header */
+    .chat-header-left h3 {
+        max-width: 120px;
+        font-size: 13px;
+    }
+
+    .mobile-menu-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
+    }
+
+    /* Messages */
+    .messages-container {
+        padding: 8px;
+        padding-bottom: 120px;
+    }
+
+    .message {
+        padding: 5px 8px;
+    }
+
+    .message-author {
+        font-size: 12px;
+    }
+
+    .message-time {
+        font-size: 9px;
+    }
+
+    .message-text {
+        font-size: 12px;
     }
 
     .message-file img {
-        max-width: 150px;
+        max-width: 140px;
+        max-height: 120px;
     }
 
     .message-file video {
         max-width: 180px;
+        max-height: 150px;
     }
 
-    .auth-box {
-        padding: 24px;
+    .file-attachment {
+        padding: 5px 8px;
     }
 
-    .chat-header-left h3 {
+    .file-name {
+        font-size: 10px;
+    }
+
+    /* Message input */
+    .message-input-container {
+        padding: 8px 10px;
+    }
+
+    .message-toolbar {
+        gap: 6px;
+    }
+
+    .toolbar-btn {
+        padding: 4px;
+        font-size: 12px;
+    }
+
+    .message-input-wrapper textarea {
+        font-size: 12px;
+        padding: 6px 10px;
+        padding-right: 45px;
+    }
+
+    .sticker-btn {
+        right: 45px;
+        bottom: 4px;
+        font-size: 14px;
+    }
+
+    .send-btn {
+        padding: 5px 8px;
+        font-size: 12px;
+    }
+
+    /* Sidebar */
+    .left-sidebar,
+    .middle-sidebar {
+        width: 260px;
+    }
+
+    .user-info {
+        padding: 12px;
+    }
+
+    .user-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+
+    .user-details span:first-child {
         font-size: 13px;
-        max-width: 150px;
     }
 
+    .section-header {
+        padding: 12px 12px 6px;
+    }
+
+    .server-item,
+    .channel-item,
+    .member-item {
+        padding: 6px 8px;
+    }
+
+    /* Modal */
+    .sticker-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .sticker {
+        font-size: 20px;
+        padding: 5px;
+    }
+
+    /* Date separator */
+    .date-separator-text {
+        font-size: 9px;
+        padding: 2px 8px;
+    }
+
+    /* Join section */
+    .join-section input {
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+
+    .join-btn {
+        padding: 8px;
+        font-size: 12px;
+    }
+}
+
+/* Untuk iPhone 12/13/14 Pro Max dan layar lebar lainnya (max-width: 428px) */
+@media (max-width: 428px) {
+    .chat-header-left h3 {
+        max-width: 130px;
+    }
+    
     .messages-container {
-        padding-bottom: 150px;
+        padding-bottom: 130px;
+    }
+}
+
+/* Untuk perangkat dengan layar sangat kecil (iPhone SE 1st gen, iPhone 4/4s) */
+@media (max-width: 375px) {
+    .chat-header-left h3 {
+        max-width: 100px;
+        font-size: 12px;
+    }
+    
+    .mobile-menu-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+    }
+    
+    .message-file img {
+        max-width: 120px;
+        max-height: 100px;
+    }
+    
+    .message-file video {
+        max-width: 150px;
+        max-height: 120px;
+    }
+    
+    .sticker-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Landscape mode untuk mobile */
+@media (max-width: 896px) and (orientation: landscape) {
+    .chat-header {
+        padding: 8px 12px;
+    }
+    
+    .messages-container {
+        padding-bottom: 80px;
+    }
+    
+    .message-input-container {
+        padding: 6px 10px;
+    }
+    
+    .message-toolbar {
+        margin-bottom: 4px;
+    }
+    
+    .message-input-wrapper textarea {
+        max-height: 36px;
+    }
+    
+    .sticker-btn {
+        bottom: 4px;
+    }
+}
+
+/* Safe area untuk iPhone X ke atas (notch) */
+@supports (padding: max(0px)) {
+    .chat-header {
+        padding-top: max(12px, env(safe-area-inset-top));
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+    }
+    
+    .message-input-container {
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
+        padding-left: max(12px, env(safe-area-inset-left));
+        padding-right: max(12px, env(safe-area-inset-right));
+    }
+    
+    .left-sidebar,
+    .middle-sidebar {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
     }
 }
