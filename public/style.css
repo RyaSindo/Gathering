@@ -918,7 +918,7 @@ body {
     text-align: center;
 }
 
-.save-btn, .copy-btn {
+.save-btn, .copy-btn, .cancel-btn {
     padding: 10px 20px;
     background-color: #5865f2;
     border: none;
@@ -927,7 +927,7 @@ body {
     cursor: pointer;
 }
 
-.save-btn:hover, .copy-btn:hover {
+.save-btn:hover, .copy-btn:hover, .cancel-btn:hover {
     background-color: #4752c4;
 }
 
