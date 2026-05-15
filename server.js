@@ -207,6 +207,55 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
     }
 });
 
+// Upload avatar profile
+const avatarUpload = multer({ 
+    storage: memoryStorage,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+    fileFilter: (req, file, cb) => {
+        // Izinkan semua format gambar
+        const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+        if (allowedMimes.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Format file tidak didukung. Gunakan JPG, PNG, GIF, WEBP, atau BMP.'), false);
+        }
+    }
+});
+
+app.post('/api/upload-avatar', avatarUpload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    try {
+        const result = await new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    folder: 'gathering-avatars',
+                    transformation: [
+                        { width: 200, height: 200, crop: 'fill' },
+                        { radius: 'max' }
+                    ],
+                    format: 'png'
+                },
+                (error, result) => {
+                    if (error) reject(error);
+                    else resolve(result);
+                }
+            );
+            uploadStream.end(req.file.buffer);
+        });
+        
+        res.json({
+            success: true,
+            url: result.secure_url
+        });
+    } catch (err) {
+        console.error('Upload avatar error:', err);
+        res.status(500).json({ error: 'Upload failed', details: err.message });
+    }
+});
+
 // ========== ROUTES USERS ==========
 app.get('/api/users', async (req, res) => {
     try {

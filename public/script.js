@@ -198,17 +198,18 @@ async function uploadAvatar(file) {
             body: formData
         });
         
-        if (response.ok) {
-            const result = await response.json();
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
             showNotification('Avatar berhasil diupload!', 'success');
             return result.url;
         } else {
-            showNotification('Gagal mengupload avatar', 'error');
+            showNotification(result.error || 'Gagal mengupload avatar', 'error');
             return null;
         }
     } catch (error) {
         console.error('Upload error:', error);
-        showNotification('Error upload avatar', 'error');
+        showNotification('Error upload avatar: ' + error.message, 'error');
         return null;
     }
 }
