@@ -992,11 +992,11 @@ body {
     background-color: #4e5058;
 }
 
-/* Profile Modal */
+/* Container avatar */
 .profile-avatar-container {
     position: relative;
     display: inline-block;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .profile-avatar-large {
@@ -1011,6 +1011,8 @@ body {
     font-weight: bold;
     color: white;
     margin: 0 auto;
+    background-size: cover;
+    background-position: center;
 }
 
 .profile-avatar-edit {
@@ -1028,6 +1030,7 @@ body {
     cursor: pointer;
     color: white;
     transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 .profile-avatar-edit:hover {
@@ -1035,30 +1038,33 @@ body {
     transform: scale(1.05);
 }
 
+/* Field - label dan input/bio */
 .profile-field {
     text-align: left;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
 }
 
 .profile-field label {
     display: block;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     color: #949ba4;
     margin-bottom: 6px;
     text-transform: uppercase;
-    padding-left: 10px;
+    letter-spacing: 0.5px;
 }
 
 .profile-field input,
 .profile-field textarea {
     width: 100%;
+    padding: 10px 12px;
     background-color: #1e1f22;
     border: 1px solid #404249;
     border-radius: 8px;
     color: #dbdee1;
     font-size: 14px;
     font-family: inherit;
+    transition: border-color 0.2s;
 }
 
 .profile-field input:focus,
@@ -1070,6 +1076,52 @@ body {
 .profile-field input:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    background-color: #2b2d31;
+}
+
+/* Bio textarea */
+.profile-field textarea {
+    resize: vertical;
+    min-height: 70px;
+}
+
+/* Member since */
+.profile-field p {
+    font-size: 13px;
+    color: #949ba4;
+    margin: 4px 0 0 0;
+    padding-left: 0;
+}
+
+/* Tombol dalam modal profil */
+#profileModal .modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding: 0 0 10px 0;
+}
+
+/* Responsif untuk mobile */
+@media (max-width: 480px) {
+    .profile-avatar-large {
+        width: 80px;
+        height: 80px;
+        font-size: 36px;
+    }
+    .profile-avatar-edit {
+        width: 28px;
+        height: 28px;
+        font-size: 12px;
+    }
+    .profile-field label {
+        font-size: 10px;
+    }
+    .profile-field input,
+    .profile-field textarea {
+        font-size: 13px;
+        padding: 8px 10px;
+    }
 }
 
 /* Date Separator */
