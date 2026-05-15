@@ -1047,12 +1047,13 @@ body {
     color: #949ba4;
     margin-bottom: 6px;
     text-transform: uppercase;
+    padding-left: 10px;
 }
 
 .profile-field input,
 .profile-field textarea {
     width: 100%;
-    padding: 10px 12px;
+    padding: 10px;
     background-color: #1e1f22;
     border: 1px solid #404249;
     border-radius: 8px;
