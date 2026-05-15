@@ -1053,7 +1053,6 @@ body {
 .profile-field input,
 .profile-field textarea {
     width: 100%;
-    padding: 10px;
     background-color: #1e1f22;
     border: 1px solid #404249;
     border-radius: 8px;
