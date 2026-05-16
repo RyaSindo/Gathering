@@ -493,6 +493,7 @@ app.post('/api/messages', async (req, res) => {
         };
         await db.collection('messages').insertOne(newMessage);
         io.emit('messages-updated', await db.collection('messages').find({}).toArray());
+        io.emit('new-message', newMessage);
         res.status(201).json(newMessage);
     } catch (err) {
         res.status(500).json({ error: err.message });

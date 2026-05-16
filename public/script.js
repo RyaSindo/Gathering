@@ -68,6 +68,37 @@ function closeModals() {
     });
 }
 
+// Meminta izin notifikasi browser
+function requestNotificationPermission() {
+    if (!("Notification" in window)) {
+        console.log("Browser tidak mendukung notifikasi");
+        return;
+    }
+    if (Notification.permission === "granted") {
+        console.log("Notifikasi sudah diizinkan");
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                console.log("Notifikasi diizinkan");
+            }
+        });
+    }
+}
+
+// Menampilkan notifikasi desktop
+function showDesktopNotification(title, body, tag = null) {
+    if (!("Notification" in window)) return;
+    if (Notification.permission !== "granted") return;
+
+    const options = {
+        body: body,
+        icon: "/favicon.ico", // ganti dengan icon Anda jika ada
+        silent: false,
+        tag: tag // agar notifikasi yang sama tidak bertumpuk
+    };
+    new Notification(title, options);
+}
+
 // ==================== PROFILE FUNCTIONS ====================
 async function loadUserProfiles() {
     try {
@@ -1468,6 +1499,45 @@ function setupSocketEvents() {
             renderMessages();
         }
     });
+    
+    socket.on('new-message', (message) => {
+        // Jangan tampilkan notifikasi jika pesan dari user sendiri
+        if (message.userId === currentUser?.id) return;
+
+        // Cari nama channel dan server
+        const channel = channels.find(c => c.id === message.channelId);
+        const server = servers.find(s => s.id === channel?.serverId);
+        const channelName = channel ? `#${channel.name}` : 'Channel';
+        const serverName = server ? server.name : 'Server';
+
+        // Siapkan konten notifikasi
+        let contentPreview = message.content ? message.content.substring(0, 50) : '';
+        if (message.fileUrl) {
+            if (message.fileType === 'image') contentPreview = '📷 Gambar';
+            else if (message.fileType === 'video') contentPreview = '🎥 Video';
+            else if (message.fileType === 'gif') contentPreview = '🎞️ GIF';
+            else contentPreview = '📎 File';
+        }
+
+        // Hanya tampilkan notifikasi jika channel yang sedang aktif bukan channel pesan ini
+        // dan tab tidak sedang aktif (opsional, bisa selalu tampilkan)
+        if (currentChannelId !== message.channelId) {
+            showDesktopNotification(
+                `${serverName} - ${channelName}`,
+                `${message.username}: ${contentPreview}`,
+                `msg-${message.channelId}`
+            );
+        }
+
+        // tidak menampilkan notifikasi jika tab sedang aktif
+        if (document.hidden && currentChannelId !== message.channelId) {
+            showDesktopNotification(
+                `${serverName} - ${channelName}`,
+                `${message.username}: ${contentPreview}`,
+                `msg-${message.channelId}`
+            );
+        }
+    });
 }
 
 // ==================== INITIALIZE APP ====================
@@ -1568,6 +1638,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('authPage').style.display = 'none';
             document.getElementById('mainApp').style.display = 'flex';
             updateUI();
+            requestNotificationPermission();
             
             const userServers = getUserServers();
             if (userServers.length > 0) {
