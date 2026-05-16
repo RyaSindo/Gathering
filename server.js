@@ -544,10 +544,12 @@ app.delete('/api/messages/:id', async (req, res) => {
 app.get('/api/profiles/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
-        let profile = await db.collection('profiles').findOne({ userId });
+        let profile = await db.collection('profiles').findOne({ 
+            $or: [{ userId: userId }, { username: userId }] 
+        });
         
         if (!profile) {
-            // Buat profile default jika belum ada
+            // Buat profile default
             const user = await db.collection('users').findOne({ $or: [{ id: userId }, { username: userId }] });
             const defaultProfile = {
                 id: generateId(),
@@ -567,23 +569,46 @@ app.get('/api/profiles/:userId', async (req, res) => {
     }
 });
 
-// Update user profile
+// ========== UPDATE PROFILE ==========
 app.put('/api/profiles/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const { displayName, bio, avatarUrl } = req.body;
-        console.log(`Updating profile for ${userId}:`, { displayName, bio, avatarUrl }); // log
-        const updateData = {};
-        if (displayName !== undefined) updateData.displayName = displayName;
-        if (bio !== undefined) updateData.bio = bio;
-        if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
-        const result = await db.collection('profiles').findOneAndUpdate(
-            { userId },
-            { $set: { ...updateData, updatedAt: new Date().toISOString() } },
-            { upsert: true, returnDocument: 'after' }
-        );
-        io.emit('profile-updated', { userId, profile: result.value });
-        res.json(result.value);
+        
+        // Cari profile berdasarkan userId atau username (agar fleksibel)
+        let profile = await db.collection('profiles').findOne({ 
+            $or: [{ userId: userId }, { username: userId }] 
+        });
+        
+        if (!profile) {
+            // Buat profile baru jika belum ada
+            const newProfile = {
+                id: generateId(),
+                userId: userId,
+                displayName: displayName || userId,
+                bio: bio || 'Anggota Gathering 🎉',
+                avatarUrl: avatarUrl || null,
+                memberSince: new Date().toISOString()
+            };
+            await db.collection('profiles').insertOne(newProfile);
+            profile = newProfile;
+        } else {
+            // Update profile yang sudah ada
+            const updateData = {};
+            if (displayName !== undefined) updateData.displayName = displayName;
+            if (bio !== undefined) updateData.bio = bio;
+            if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
+            
+            await db.collection('profiles').updateOne(
+                { _id: profile._id },
+                { $set: { ...updateData, updatedAt: new Date().toISOString() } }
+            );
+            // Gabungkan data lama dengan update
+            profile = { ...profile, ...updateData };
+        }
+        
+        io.emit('profile-updated', { userId, profile });
+        res.json(profile);
     } catch (err) {
         console.error('Error updating profile:', err);
         res.status(500).json({ error: err.message });

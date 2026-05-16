@@ -188,7 +188,6 @@ async function updateUI() {
 // Update user profile ke database
 async function updateUserProfile(userId, data) {
     const idStr = String(userId);
-    
     try {
         const response = await fetch(`${API_URL}/profiles/${encodeURIComponent(idStr)}`, {
             method: 'PUT',
@@ -196,26 +195,21 @@ async function updateUserProfile(userId, data) {
             body: JSON.stringify(data)
         });
         
-        // Periksa status HTTP
         if (response.ok) {
             const updatedProfile = await response.json();
             userProfiles[idStr] = updatedProfile;
-            
-            // Update UI secara lokal (tanpa menunggu reload)
             await updateUI();
-            
             showNotification('Profil berhasil diperbarui!', 'success');
             return updatedProfile;
         } else {
-            // Baca pesan error dari server
-            const errorData = await response.json();
-            console.error('Update profile error:', errorData);
-            showNotification(errorData.error || 'Gagal memperbarui profil', 'error');
+            const errorText = await response.text();
+            console.error('Update profile HTTP error:', response.status, errorText);
+            showNotification(`Gagal memperbarui profil (${response.status})`, 'error');
             return null;
         }
     } catch (error) {
-        console.error('Error updating profile:', error);
-        showNotification('Error memperbarui profil: ' + error.message, 'error');
+        console.error('Network error updating profile:', error);
+        showNotification('Error jaringan saat memperbarui profil', 'error');
         return null;
     }
 }
@@ -1570,8 +1564,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (file && file.size <= 2 * 1024 * 1024) {
             const avatarContainer = document.getElementById('profileAvatarLarge');
             const avatarText = document.getElementById('profileAvatarText');
-        
-            // Simpan konten asli
             const originalContent = avatarContainer.innerHTML;
             const originalStyle = avatarContainer.style.backgroundImage;
         
@@ -1579,35 +1571,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             avatarContainer.style.backgroundImage = 'none';
             avatarContainer.innerHTML = `<div class="profile-avatar-loading"><div class="loading-spinner"></div></div>`;
         
-            // Upload avatar ke Cloudinary
             const avatarUrl = await uploadAvatar(file);
             if (avatarUrl) {
                 const userId = currentUser?.id || currentUser?.username;
-                // Update profil di database
                 const updated = await updateUserProfile(userId, { avatarUrl: avatarUrl });
                 if (updated) {
-                    // Update tampilan avatar di modal dan sidebar
+                    // Update UI
                     avatarContainer.style.backgroundImage = `url(${avatarUrl})`;
                     avatarContainer.style.backgroundSize = 'cover';
                     avatarContainer.style.backgroundPosition = 'center';
                     avatarContainer.innerHTML = '';
                     avatarText.style.display = 'none';
-                    await updateUI(); // refresh sidebar
+                    await updateUI();
+                    showNotification('Avatar berhasil diperbarui!', 'success');
                 } else {
-                    // Jika update gagal, kembalikan tampilan
+                    // Gagal update database, kembalikan tampilan
                     avatarContainer.style.backgroundImage = originalStyle;
                     avatarContainer.innerHTML = originalContent;
                     if (!originalStyle) avatarText.style.display = 'flex';
                     showNotification('Gagal menyimpan avatar ke database', 'error');
                 }
             } else {
-                // Upload gagal, kembalikan tampilan
+                // Upload gagal
                 avatarContainer.style.backgroundImage = originalStyle;
                 avatarContainer.innerHTML = originalContent;
                 if (!originalStyle) avatarText.style.display = 'flex';
             }
         } else if (file && file.size > 2 * 1024 * 1024) {
-            showNotification('File terlalu besar! Maksimal  2MB', 'error');
+            showNotification('File terlalu besar! Maksimal 2MB', 'error');
         }
     });
     
