@@ -1182,11 +1182,9 @@ async function renderMessages() {
     
     const sortedMessages = [...channelMessages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
-    // Kumpulkan semua userId unik dari pesan untuk dimuat profilnya sekaligus
+    // Kumpulkan userId unik
     const uniqueUserIds = [...new Set(sortedMessages.map(msg => msg.userId))];
     const profilesMap = new Map();
-    
-    // Load semua profil secara paralel
     await Promise.all(uniqueUserIds.map(async (userId) => {
         const profile = await getUserProfile(userId);
         profilesMap.set(userId, profile);
@@ -1207,7 +1205,6 @@ async function renderMessages() {
         const timeStr = msgDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
         const canDelete = canDeleteMessage(msg, currentUser.id, currentServerId);
         
-        // Ambil data profil dari map
         const profile = profilesMap.get(msg.userId);
         let senderName = msg.username;
         if (profile) {
@@ -1216,23 +1213,22 @@ async function renderMessages() {
                 : msg.username;
         }
         
-        // Generate HTML untuk avatar
+        // Avatar
         let avatarHtml = '';
         if (profile && profile.avatarUrl) {
             avatarHtml = `<img src="${profile.avatarUrl}" class="message-avatar" alt="${escapeHtml(senderName)}">`;
         } else {
-            // Warna konsisten berdasarkan userId
             const color = getColorFromString(msg.userId);
             const initial = senderName.charAt(0).toUpperCase();
             avatarHtml = `<div class="message-avatar-placeholder" style="background-color: ${color};">${initial}</div>`;
         }
         
-        // File attachment HTML (sama seperti sebelumnya)
+        // ========== FILE ATTACHMENT (DIPERBAIKI) ==========
         let fileHtml = '';
         if (msg.fileUrl) {
             let fileName = msg.originalname || 'file';
             const fileExt = fileName.split('.').pop().toLowerCase();
-            const isImage = msg.fileType === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExt);
+            const isImage = msg.fileType === 'image' || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(fileExt);
             const isVideo = msg.fileType === 'video' || ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(fileExt);
             const fileSize = msg.fileSize ? (msg.fileSize / 1024 / 1024).toFixed(2) + ' MB' : '';
             
@@ -1257,7 +1253,7 @@ async function renderMessages() {
             }
         }
         
-        // Action buttons (edit/delete)
+        // Action buttons
         let actionsHtml = '';
         if (canDelete) {
             actionsHtml = `
@@ -1268,7 +1264,7 @@ async function renderMessages() {
             `;
         }
         
-        // Susun pesan dengan struktur flex
+        // Susun pesan
         const messageHtml = `
             <div class="message" data-message-id="${msg.id}">
                 ${avatarHtml}
@@ -1288,10 +1284,14 @@ async function renderMessages() {
         container.insertAdjacentHTML('beforeend', messageHtml);
     }
     
-    // Event listeners untuk edit message
+    // Event handlers (sama seperti sebelumnya)
     document.querySelectorAll('.edit-msg').forEach(btn => {
         btn.removeEventListener('click', handleEditClick);
         btn.addEventListener('click', handleEditClick);
+    });
+    document.querySelectorAll('.delete-msg').forEach(btn => {
+        btn.removeEventListener('click', handleDeleteClick);
+        btn.addEventListener('click', handleDeleteClick);
     });
     
     function handleEditClick(e) {
@@ -1303,12 +1303,6 @@ async function renderMessages() {
             document.getElementById('editMessageModal').style.display = 'flex';
         }
     }
-    
-    // Event listeners untuk delete message
-    document.querySelectorAll('.delete-msg').forEach(btn => {
-        btn.removeEventListener('click', handleDeleteClick);
-        btn.addEventListener('click', handleDeleteClick);
-    });
     
     async function handleDeleteClick(e) {
         const messageId = e.currentTarget.dataset.id;
