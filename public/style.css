@@ -1358,6 +1358,7 @@ body {
     .file-preview-area {
         margin: 0 12px 8px 12px;
         padding: 6px 10px;
+        transform: translateY(5%);
     }
 
     .file-preview-content {
