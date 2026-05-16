@@ -172,7 +172,6 @@ async function updateUserProfile(userId, data) {
             // Update UI
             await updateUI();
             
-            showNotification('Profil berhasil diperbarui!', 'success');
             return updatedProfile;
         } else {
             showNotification('Gagal memperbarui profil', 'error');
@@ -190,8 +189,6 @@ async function uploadAvatar(file) {
     const formData = new FormData();
     formData.append('file', file);
     
-    showNotification('Mengupload avatar...', 'info');
-    
     try {
         const response = await fetch('/api/upload-avatar', {
             method: 'POST',
@@ -201,7 +198,7 @@ async function uploadAvatar(file) {
         const result = await response.json();
         
         if (response.ok && result.success) {
-            showNotification('Avatar berhasil diupload!', 'success');
+            // showNotification('Avatar berhasil diupload!', 'success');
             return result.url;
         } else {
             showNotification(result.error || 'Gagal mengupload avatar', 'error');
@@ -517,7 +514,7 @@ async function createServer(name) {
         });
         
         await loadData();
-        showNotification(`Server "${name}" berhasil dibuat! Kode: ${newServer.inviteCode}`, 'success');
+        // showNotification(`Server "${name}" berhasil dibuat! Kode: ${newServer.inviteCode}`, 'success');
         return newServer;
     }
     return null;
@@ -561,7 +558,7 @@ async function deleteServer(serverId) {
             }
         }
         
-        showNotification(`Server "${server.name}" berhasil dihapus`, 'success');
+        // showNotification(`Server "${server.name}" berhasil dihapus`, 'success');
         return true;
     }
     return false;
@@ -578,7 +575,7 @@ async function joinServer(inviteCode) {
     
     const alreadyMember = serverMembers.some(m => m.serverId === server.id && m.userId === currentUser.id);
     if (alreadyMember) {
-        showNotification('Anda sudah menjadi member server ini!', 'info');
+        // showNotification('Anda sudah menjadi member server ini!', 'info');
         return { success: false };
     }
     
@@ -589,7 +586,7 @@ async function joinServer(inviteCode) {
     });
     
     await loadData();
-    showNotification(`Berhasil bergabung ke server ${server.name}!`, 'success');
+    // showNotification(`Berhasil bergabung ke server ${server.name}!`, 'success');
     return { success: true, server };
 }
 
@@ -632,7 +629,7 @@ async function leaveServer(serverId) {
                 }
             }
             
-            showNotification(`Anda telah keluar dari server "${server.name}"`, 'success');
+            // showNotification(`Anda telah keluar dari server "${server.name}"`, 'success');
             return true;
         }
     }
@@ -654,7 +651,7 @@ async function addChannel(serverId, name) {
     
     await loadData();
     renderChannels();
-    showNotification(`Channel #${name} dibuat`, 'success');
+    // showNotification(`Channel #${name} dibuat`, 'success');
 }
 
 async function deleteChannel(channelId) {
@@ -681,7 +678,7 @@ async function deleteChannel(channelId) {
         }
         
         renderChannels();
-        showNotification(`Channel #${channel.name} berhasil dihapus`, 'success');
+        // showNotification(`Channel #${channel.name} berhasil dihapus`, 'success');
     }
 }
 
@@ -707,7 +704,7 @@ async function updateMemberRole(memberId, newRole) {
     
     await loadData();
     renderMembers();
-    showNotification(`Role member berhasil diubah menjadi ${newRole}`, 'success');
+    // showNotification(`Role member berhasil diubah menjadi ${newRole}`, 'success');
 }
 
 // ==================== MESSAGE FUNCTIONS ====================
@@ -729,7 +726,7 @@ async function deleteMessage(messageId) {
         try {
             const response = await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
             if (response.ok) {
-                showNotification(message.fileUrl ? 'Pesan dan file berhasil dihapus' : 'Pesan berhasil dihapus', 'success');
+                // showNotification(message.fileUrl ? 'Pesan dan file berhasil dihapus' : 'Pesan berhasil dihapus', 'success');
             } else {
                 showNotification('Gagal menghapus pesan', 'error');
             }
@@ -921,7 +918,7 @@ async function uploadFileAndPreview(file) {
     
     // Tampilkan loading terlebih dahulu
     showPreviewLoading();
-    showNotification('Mengupload file...', 'info');
+    // showNotification('Mengupload file...', 'info');
     
     const formData = new FormData();
     formData.append('file', file);
@@ -941,7 +938,7 @@ async function uploadFileAndPreview(file) {
             pendingFileType = result.type || fileType;
             // Setelah upload berhasil, tampilkan preview final
             showPreviewArea(file, fileType, previewUrl);
-            showNotification(`File "${file.name}" siap dikirim!`, 'success');
+            // showNotification(`File "${file.name}" siap dikirim!`, 'success');
         } else {
             const error = await response.json();
             showNotification('Upload gagal: ' + (error.error || 'Unknown error'), 'error');
