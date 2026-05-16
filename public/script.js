@@ -1,3 +1,5 @@
+const { cache } = require("react");
+
 // ==================== SOCKET.IO & API CONFIGURATION ====================
 const socket = io();
 const API_URL = window.location.origin + '/api';
@@ -1163,9 +1165,10 @@ function selectChannel(channelId) {
     renderMessages();
 }
 
-// Perbaiki renderMessages
+// renderMessages
 async function renderMessages() {
     const container = document.getElementById('messagesContainer');
+    const avatarCache = {}; // Cache untuk avatar pengguna
     if (!container) return;
     
     if (!currentChannelId) {
@@ -1209,6 +1212,26 @@ async function renderMessages() {
                 : senderUser.username;
         }
 
+        // Dapatkan avatar pengirim
+        let avatarHtml = '';
+        const cacheKey = senderUser?.id || senderUser?.username;
+        if (cacheKey && userProfiles[cacheKey]) {
+            avatarHtml = avatarCache[cacheKey];
+        } else {
+            if (cacheKey) avatarCache[cacheKey] = avatarHtml; // Simpan ke cache meskipun null untuk menghindari permintaan berulang
+        }
+
+        if (senderUser) {
+            const senderProfile = await getUserProfile(senderUser.id || senderUser.username);
+            if (senderProfile && senderProfile.avatarUrl) {
+                avatarHtml = `<img src="${senderProfile.avatarUrl}" class="message-avatar" alt="${escapeHtml(senderName)}">`;
+            } else {
+                avatarHtml = `<div class="message-avatar-placeholder" style="background-color: #5865f2;">${senderName.charAt(0).toUpperCase()}</div>`;
+            }
+        } else {
+            avatarHtml = `<div class="message-avatar-placeholder" style="background-color: #5865f2;">${senderName.charAt(0).toUpperCase()}</div>`;
+        }
+
         let fileHtml = '';
         if (msg.fileUrl) {
             let fileName = msg.originalname || 'file';
@@ -1239,19 +1262,24 @@ async function renderMessages() {
         }
         
         div.innerHTML = `
-            <div class="message-header">
-                <span class="message-author">${escapeHtml(senderName)}</span>
-                <span class="message-time">${timeStr}</span>
-                ${msg.editedAt ? '<span class="edited-indicator">(edited)</span>' : ''}
-            </div>
-            ${fileHtml}
-            ${msg.content ? `<div class="message-text">${escapeHtml(msg.content)}</div>` : ''}
-            ${canDelete ? `
-                <div class="message-actions">
-                    ${msg.userId === currentUser.id && msg.content ? `<button class="edit-msg" data-id="${msg.id}"><i class="fas fa-edit"></i> Edit</button>` : ''}
-                    <button class="delete-msg" data-id="${msg.id}"><i class="fas fa-trash"></i> Hapus</button>
+            <div class="message-wrapper">
+                ${avatarHtml}
+                <div class="message-content-wrapper">
+                    <div class="message-header">
+                        <span class="message-author">${escapeHtml(senderName)}</span>
+                        <span class="message-time">${timeStr}</span>
+                        ${msg.editedAt ? '<span class="edited-indicator">(edited)</span>' : ''}
+                    </div>
+                    ${fileHtml}
+                    ${msg.content ? `<div class="message-text">${escapeHtml(msg.content)}</div>` : ''}
+                    ${canDelete ? `
+                        <div class="message-actions">
+                            ${msg.userId === currentUser.id && msg.content ? `<button class="edit-msg" data-id="${msg.id}"><i class="fas fa-edit"></i> Edit</button>` : ''}
+                            <button class="delete-msg" data-id="${msg.id}"><i class="fas fa-trash"></i> Hapus</button>
+                        </div>
+                    ` : ''}
                 </div>
-            ` : ''}
+            </div>
         `;
         
         container.appendChild(div);
