@@ -1,5 +1,3 @@
-const { cache } = require("react");
-
 // ==================== SOCKET.IO & API CONFIGURATION ====================
 const socket = io();
 const API_URL = window.location.origin + '/api';
@@ -1165,7 +1163,7 @@ function selectChannel(channelId) {
     renderMessages();
 }
 
-// renderMessages
+// ==================== RENDER MESSAGES ====================
 async function renderMessages() {
     const container = document.getElementById('messagesContainer');
     if (!container) return;
@@ -1184,6 +1182,16 @@ async function renderMessages() {
     
     const sortedMessages = [...channelMessages].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     
+    // Kumpulkan semua userId unik dari pesan untuk dimuat profilnya sekaligus
+    const uniqueUserIds = [...new Set(sortedMessages.map(msg => msg.userId))];
+    const profilesMap = new Map();
+    
+    // Load semua profil secara paralel
+    await Promise.all(uniqueUserIds.map(async (userId) => {
+        const profile = await getUserProfile(userId);
+        profilesMap.set(userId, profile);
+    }));
+    
     container.innerHTML = '';
     let lastDate = null;
     
@@ -1196,32 +1204,30 @@ async function renderMessages() {
             lastDate = currentDateStr;
         }
         
-        const div = document.createElement('div');
-        div.className = 'message';
         const timeStr = msgDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
         const canDelete = canDeleteMessage(msg, currentUser.id, currentServerId);
         
-        // Dapatkan displayName untuk pengirim pesan
+        // Ambil data profil dari map
+        const profile = profilesMap.get(msg.userId);
         let senderName = msg.username;
-        const senderUser = users.find(u => u.id === msg.userId || u.username === msg.userId);
-        if (senderUser) {
-            const senderProfile = await getUserProfile(senderUser.id || senderUser.username);
-            senderName = (senderProfile.displayName && senderProfile.displayName !== (senderUser.id || senderUser.username)) 
-                ? senderProfile.displayName 
-                : senderUser.username;
+        if (profile) {
+            senderName = (profile.displayName && profile.displayName !== msg.userId) 
+                ? profile.displayName 
+                : msg.username;
         }
-
-        if (senderUser) {
-            const senderProfile = await getUserProfile(senderUser.id || senderUser.username);
-            if (senderProfile && senderProfile.avatarUrl) {
-                avatarHtml = `<img src="${senderProfile.avatarUrl}" class="message-avatar" alt="${escapeHtml(senderName)}">`;
-            } else {
-                avatarHtml = `<div class="message-avatar-placeholder" style="background-color: #5865f2;">${senderName.charAt(0).toUpperCase()}</div>`;
-            }
+        
+        // Generate HTML untuk avatar
+        let avatarHtml = '';
+        if (profile && profile.avatarUrl) {
+            avatarHtml = `<img src="${profile.avatarUrl}" class="message-avatar" alt="${escapeHtml(senderName)}">`;
         } else {
-            avatarHtml = `<div class="message-avatar-placeholder" style="background-color: #5865f2;">${senderName.charAt(0).toUpperCase()}</div>`;
+            // Warna konsisten berdasarkan userId
+            const color = getColorFromString(msg.userId);
+            const initial = senderName.charAt(0).toUpperCase();
+            avatarHtml = `<div class="message-avatar-placeholder" style="background-color: ${color};">${initial}</div>`;
         }
-
+        
+        // File attachment HTML (sama seperti sebelumnya)
         let fileHtml = '';
         if (msg.fileUrl) {
             let fileName = msg.originalname || 'file';
@@ -1251,8 +1257,20 @@ async function renderMessages() {
             }
         }
         
-        div.innerHTML = `
-            <div class="message-wrapper">
+        // Action buttons (edit/delete)
+        let actionsHtml = '';
+        if (canDelete) {
+            actionsHtml = `
+                <div class="message-actions">
+                    ${msg.userId === currentUser.id && msg.content ? `<button class="edit-msg" data-id="${msg.id}"><i class="fas fa-edit"></i> Edit</button>` : ''}
+                    <button class="delete-msg" data-id="${msg.id}"><i class="fas fa-trash"></i> Hapus</button>
+                </div>
+            `;
+        }
+        
+        // Susun pesan dengan struktur flex
+        const messageHtml = `
+            <div class="message" data-message-id="${msg.id}">
                 ${avatarHtml}
                 <div class="message-content-wrapper">
                     <div class="message-header">
@@ -1262,47 +1280,59 @@ async function renderMessages() {
                     </div>
                     ${fileHtml}
                     ${msg.content ? `<div class="message-text">${escapeHtml(msg.content)}</div>` : ''}
-                    ${canDelete ? `
-                        <div class="message-actions">
-                            ${msg.userId === currentUser.id && msg.content ? `<button class="edit-msg" data-id="${msg.id}"><i class="fas fa-edit"></i> Edit</button>` : ''}
-                            <button class="delete-msg" data-id="${msg.id}"><i class="fas fa-trash"></i> Hapus</button>
-                        </div>
-                    ` : ''}
+                    ${actionsHtml}
                 </div>
             </div>
         `;
         
-        container.appendChild(div);
+        container.insertAdjacentHTML('beforeend', messageHtml);
     }
     
     // Event listeners untuk edit message
     document.querySelectorAll('.edit-msg').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const msg = messages.find(m => m.id === btn.dataset.id);
-            if (msg && msg.userId === currentUser.id) {
-                editingMessageId = msg.id;
-                document.getElementById('editMessageInput').value = msg.content;
-                document.getElementById('editMessageModal').style.display = 'flex';
-            }
-        });
+        btn.removeEventListener('click', handleEditClick);
+        btn.addEventListener('click', handleEditClick);
     });
+    
+    function handleEditClick(e) {
+        const msgId = e.currentTarget.dataset.id;
+        const msg = messages.find(m => m.id === msgId);
+        if (msg && msg.userId === currentUser.id) {
+            editingMessageId = msg.id;
+            document.getElementById('editMessageInput').value = msg.content;
+            document.getElementById('editMessageModal').style.display = 'flex';
+        }
+    }
     
     // Event listeners untuk delete message
     document.querySelectorAll('.delete-msg').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const messageId = btn.dataset.id;
-            const message = messages.find(m => m.id === messageId);
-            if (message && canDeleteMessage(message, currentUser.id, currentServerId)) {
-                if (confirm('Hapus pesan ini?')) {
-                    await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
-                }
-            } else {
-                showNotification('Anda tidak memiliki izin untuk menghapus pesan ini!', 'error');
-            }
-        });
+        btn.removeEventListener('click', handleDeleteClick);
+        btn.addEventListener('click', handleDeleteClick);
     });
     
+    async function handleDeleteClick(e) {
+        const messageId = e.currentTarget.dataset.id;
+        const message = messages.find(m => m.id === messageId);
+        if (message && canDeleteMessage(message, currentUser.id, currentServerId)) {
+            if (confirm('Hapus pesan ini?')) {
+                await fetch(`${API_URL}/messages/${messageId}`, { method: 'DELETE' });
+            }
+        } else {
+            showNotification('Anda tidak memiliki izin untuk menghapus pesan ini!', 'error');
+        }
+    }
+    
     container.scrollTop = container.scrollHeight;
+}
+
+// Fungsi bantu untuk menghasilkan warna dari string (konsisten)
+function getColorFromString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = hash % 360;
+    return `hsl(${hue}, 70%, 55%)`;
 }
 
 // Render members - update untuk async

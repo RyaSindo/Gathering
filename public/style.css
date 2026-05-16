@@ -606,9 +606,13 @@ body {
     margin-bottom: 16px;
 }
 
+/* ============ NEW STYLES FOR MESSAGE AVATAR (Discord-like) ============ */
 .message {
-    margin-bottom: 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
     padding: 8px 12px;
+    margin-bottom: 4px;
     border-radius: 8px;
     transition: background-color 0.2s;
 }
@@ -617,17 +621,47 @@ body {
     background-color: #2b2d31;
 }
 
+.message-avatar,
+.message-avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 2px;
+}
+
+.message-avatar {
+    object-fit: cover;
+}
+
+.message-avatar-placeholder {
+    background-color: #5865f2;
+    color: white;
+}
+
+.message-content-wrapper {
+    flex: 1;
+    min-width: 0; /* Mencegah overflow */
+}
+
 .message-header {
     display: flex;
     align-items: baseline;
-    gap: 12px;
+    gap: 8px;
     margin-bottom: 4px;
+    flex-wrap: wrap;
 }
 
 .message-author {
     font-weight: 600;
-    color: #dbdee1;
     font-size: 14px;
+    color: #dbdee1;
 }
 
 .message-time {
@@ -635,47 +669,29 @@ body {
     color: #949ba4;
 }
 
-.message-content {
-    font-size: 14px;
-    line-height: 1.4;
-    word-wrap: break-word;
+.edited-indicator {
+    font-size: 10px;
+    color: #949ba4;
+    font-style: italic;
 }
 
 .message-text {
-    margin-top: 4px;
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+    margin-top: 2px;
 }
 
 .message-file {
-    margin-top: 8px;
+    margin-top: 6px;
 }
 
-.message-file img {
+.message-file img,
+.message-file video {
     max-width: 300px;
     max-height: 200px;
     border-radius: 8px;
     cursor: pointer;
-}
-
-.message-file video {
-    max-width: 400px;
-    max-height: 300px;
-    border-radius: 8px;
-}
-
-.file-attachment {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background-color: #1e1f22;
-    padding: 8px 12px;
-    border-radius: 8px;
-    text-decoration: none;
-    color: #dbdee1;
-}
-
-.file-attachment:hover {
-    background-color: #2b2d31;
-    color: #5865f2;
 }
 
 .message-actions {
@@ -703,47 +719,31 @@ body {
     color: #dbdee1;
 }
 
-.message-wrapper {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-}
-
-.message-avatar, .message-avatar-placeholder {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    object-fit: cover;
+/* Date Separator (tidak diubah, hanya untuk melengkapi) */
+.date-separator {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
-    font-size: 16px;
-    margin-top: 2px;
+    margin: 20px 0;
+    position: relative;
 }
 
-.message-content-wrapper {
+.date-separator-line {
     flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #404249, #404249, transparent);
 }
 
-.message-header {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-    margin-bottom: 4px;
-}
-
-/* Responsif untuk mobile */
-@media (max-width: 768px) {
-    .message-avatar, .message-avatar-placeholder {
-        width: 32px;
-        height: 32px;
-        font-size: 12px;
-    }
-    .message-wrapper {
-        gap: 8px;
-    }
+.date-separator-text {
+    padding: 4px 12px;
+    background-color: #2b2d31;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #949ba4;
+    letter-spacing: 0.5px;
+    margin: 0 12px;
+    white-space: nowrap;
 }
 
 /* Message Input */
@@ -1035,7 +1035,7 @@ body {
     background-color: #4e5058;
 }
 
-/* Container avatar */
+/* Profile Modal */
 .profile-avatar-container {
     position: relative;
     display: inline-block;
@@ -1081,7 +1081,6 @@ body {
     transform: scale(1.05);
 }
 
-/* Field - label dan input/bio */
 .profile-field {
     text-align: left;
     margin-bottom: 18px;
@@ -1123,13 +1122,11 @@ body {
     background-color: #2b2d31;
 }
 
-/* Bio textarea */
 .profile-field textarea {
     resize: vertical;
     min-height: 70px;
 }
 
-/* Member since */
 .profile-field p {
     font-size: 13px;
     color: #949ba4;
@@ -1137,7 +1134,6 @@ body {
     padding-left: 0;
 }
 
-/* Tombol dalam modal profil */
 #profileModal .modal-buttons {
     display: flex;
     gap: 12px;
@@ -1146,7 +1142,7 @@ body {
     padding: 0 0 10px 0;
 }
 
-/* Loading spinner */
+/* Loading Spinner */
 .loading-spinner {
     display: inline-block;
     width: 32px;
@@ -1172,55 +1168,6 @@ body {
     min-width: 120px;
 }
 
-/* Responsif untuk mobile */
-@media (max-width: 480px) {
-    .profile-avatar-large {
-        width: 80px;
-        height: 80px;
-        font-size: 36px;
-    }
-    .profile-avatar-edit {
-        width: 28px;
-        height: 28px;
-        font-size: 12px;
-    }
-    .profile-field label {
-        font-size: 10px;
-    }
-    .profile-field input,
-    .profile-field textarea {
-        font-size: 13px;
-        padding: 8px 10px;
-    }
-}
-
-/* Date Separator */
-.date-separator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 20px 0;
-    position: relative;
-}
-
-.date-separator-line {
-    flex: 1;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #404249, #404249, transparent);
-}
-
-.date-separator-text {
-    padding: 4px 12px;
-    background-color: #2b2d31;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 500;
-    color: #949ba4;
-    letter-spacing: 0.5px;
-    margin: 0 12px;
-    white-space: nowrap;
-}
-
 /* Notification */
 #notification {
     position: fixed;
@@ -1239,6 +1186,11 @@ body {
     to { transform: translateX(0); opacity: 1; }
 }
 
+@keyframes slideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
@@ -1253,7 +1205,7 @@ body {
     border-radius: 4px;
 }
 
-/* ============ MOBILE RESPONSIVE (ALL DEVICES) ============ */
+/* ============ MOBILE RESPONSIVE ============ */
 
 /* Tablet (768px - 1024px) */
 @media (max-width: 1024px) and (min-width: 769px) {
@@ -1276,7 +1228,6 @@ body {
 
 /* Mobile Landscape (max-width: 768px) */
 @media (max-width: 768px) {
-    /* Sidebar menjadi slide menu */
     .left-sidebar {
         position: fixed;
         top: 0;
@@ -1315,7 +1266,6 @@ body {
         display: flex;
     }
 
-    /* Chat area full width */
     .chat-area {
         width: 100%;
         display: flex;
@@ -1324,7 +1274,6 @@ body {
         position: relative;
     }
 
-    /* Chat header - fixed di atas */
     .chat-header {
         padding: 12px 16px;
         background-color: #313338;
@@ -1343,14 +1292,12 @@ body {
         text-overflow: ellipsis;
     }
 
-    /* Mobile menu buttons */
     .mobile-menu-btn {
         display: flex;
         align-items: center;
         justify-content: center;
     }
 
-    /* Messages container */
     .messages-container {
         flex: 1;
         overflow-y: auto;
@@ -1358,7 +1305,6 @@ body {
         padding-bottom: 100px;
     }
 
-    /* Message input container - fixed di bottom */
     .message-input-container {
         flex-shrink: 0;
         background-color: #313338;
@@ -1397,7 +1343,6 @@ body {
         font-size: 14px;
     }
 
-    /* File preview area */
     .file-preview-area {
         padding: 6px 10px;
         transform: translateY(-140px);
@@ -1408,11 +1353,6 @@ body {
         align-items: flex-start;
         width: 100%;
     }
-
-    /* .preview-image {
-        max-width: 60px;
-        max-height: 50px;
-    } */
 
     .preview-file {
         flex-wrap: wrap;
@@ -1441,58 +1381,37 @@ body {
         height: auto;
     }
 
-    /* Messages */
-    .message {
-        padding: 6px 10px;
-        margin-bottom: 12px;
+    /* Avatar di mobile */
+    .message-avatar,
+    .message-avatar-placeholder {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
     }
-
+    .message {
+        gap: 8px;
+        padding: 6px 10px;
+    }
     .message-author {
         font-size: 13px;
     }
-
-    .message-time {
-        font-size: 10px;
-    }
-
     .message-text {
         font-size: 13px;
     }
-
     .message-file img {
         max-width: 180px;
         max-height: 150px;
     }
-
     .message-file video {
         max-width: 220px;
         max-height: 180px;
     }
 
-    .file-attachment {
-        padding: 6px 10px;
-        gap: 8px;
-    }
-
-    .file-attachment i {
-        font-size: 18px;
-    }
-
-    .file-name {
-        font-size: 11px;
-    }
-
-    .file-size {
-        font-size: 9px;
-    }
-
-    /* Date separator */
     .date-separator-text {
         font-size: 10px;
         padding: 3px 10px;
     }
 
-    /* Member item */
     .member-item {
         padding: 6px;
     }
@@ -1507,7 +1426,6 @@ body {
         font-size: 12px;
     }
 
-    /* Server item */
     .server-item {
         padding: 8px 10px;
     }
@@ -1516,7 +1434,6 @@ body {
         font-size: 13px;
     }
 
-    /* Channel item */
     .channel-item {
         padding: 5px 10px;
     }
@@ -1525,7 +1442,6 @@ body {
         font-size: 13px;
     }
 
-    /* Modals */
     .sticker-modal {
         width: 95%;
     }
@@ -1558,7 +1474,6 @@ body {
         margin: 12px 15px;
     }
 
-    /* Profile modal */
     .profile-avatar-large {
         width: 80px;
         height: 80px;
@@ -1581,7 +1496,6 @@ body {
         padding: 8px 10px;
     }
 
-    /* Auth page */
     .auth-box {
         padding: 30px 20px;
     }
@@ -1591,9 +1505,8 @@ body {
     }
 }
 
-/* Mobile Portrait (max-width: 480px) untuk iPhone SE, iPhone 5/6/7/8 */
+/* Mobile Portrait (max-width: 480px) */
 @media (max-width: 480px) {
-    /* Header */
     .chat-header-left h3 {
         max-width: 120px;
         font-size: 13px;
@@ -1605,7 +1518,6 @@ body {
         font-size: 16px;
     }
 
-    /* Messages */
     .messages-container {
         padding: 8px;
         padding-bottom: 120px;
@@ -1637,15 +1549,6 @@ body {
         max-height: 150px;
     }
 
-    .file-attachment {
-        padding: 5px 8px;
-    }
-
-    .file-name {
-        font-size: 10px;
-    }
-
-    /* Message input */
     .message-input-container {
         padding: 8px 10px;
     }
@@ -1676,7 +1579,6 @@ body {
         font-size: 12px;
     }
 
-    /* Sidebar */
     .left-sidebar,
     .middle-sidebar {
         width: 260px;
@@ -1706,7 +1608,6 @@ body {
         padding: 6px 8px;
     }
 
-    /* Modal */
     .sticker-grid {
         grid-template-columns: repeat(3, 1fr);
     }
@@ -1716,13 +1617,11 @@ body {
         padding: 5px;
     }
 
-    /* Date separator */
     .date-separator-text {
         font-size: 9px;
         padding: 2px 8px;
     }
 
-    /* Join section */
     .join-section input {
         font-size: 12px;
         padding: 8px 10px;
