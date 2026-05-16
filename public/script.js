@@ -809,6 +809,18 @@ async function sendMessage(content) {
 }
 
 // ==================== FILE PREVIEW & UPLOAD ====================
+function showPreviewLoading() {
+    const previewArea = document.getElementById('filePreviewArea');
+    const previewContent = document.getElementById('filePreviewContent');
+    const removeBtn = document.getElementById('removeFilePreviewBtn');
+    if (!previewArea || !previewContent) return;
+    previewContent.innerHTML = `<div class="file-preview-loading"><div class="loading-spinner"></div><span>Mengupload...</span></div>`;
+    previewArea.style.display = 'block';
+    if (removeBtn) {
+        removeBtn.onclick = () => clearFilePreview();
+    }
+}
+
 function showPreviewArea(file, fileType, previewUrl) {
     const previewArea = document.getElementById('filePreviewArea');
     const previewContent = document.getElementById('filePreviewContent');
@@ -907,7 +919,8 @@ async function uploadFileAndPreview(file) {
         previewUrl = URL.createObjectURL(file);
     }
     
-    showPreviewArea(file, fileType, previewUrl);
+    // Tampilkan loading terlebih dahulu
+    showPreviewLoading();
     showNotification('Mengupload file...', 'info');
     
     const formData = new FormData();
@@ -926,6 +939,8 @@ async function uploadFileAndPreview(file) {
             pendingFileOriginalName = result.originalname;
             pendingFileSize = result.size || file.size;
             pendingFileType = result.type || fileType;
+            // Setelah upload berhasil, tampilkan preview final
+            showPreviewArea(file, fileType, previewUrl);
             showNotification(`File "${file.name}" siap dikirim!`, 'success');
         } else {
             const error = await response.json();
@@ -1481,19 +1496,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('avatarUploadInput')?.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file && file.size <= 2 * 1024 * 1024) {
+            const avatarContainer = document.getElementById('profileAvatarLarge');
+            const avatarText = document.getElementById('profileAvatarText');
+        
+            // Simpan konten asli
+            const originalContent = avatarContainer.innerHTML;
+            const originalStyle = avatarContainer.style.backgroundImage;
+        
+            // Tampilkan loading
+            avatarContainer.style.backgroundImage = 'none';
+            avatarContainer.innerHTML = `<div class="profile-avatar-loading"><div class="loading-spinner"></div></div>`;
+        
             const avatarUrl = await uploadAvatar(file);
             if (avatarUrl) {
                 const userId = currentUser?.id || currentUser?.username;
                 await updateUserProfile(userId, { avatarUrl: avatarUrl });
-                
-                const avatarContainer = document.getElementById('profileAvatarLarge');
-                const avatarText = document.getElementById('profileAvatarText');
+            
+                // Update tampilan
                 avatarContainer.style.backgroundImage = `url(${avatarUrl})`;
                 avatarContainer.style.backgroundSize = 'cover';
                 avatarContainer.style.backgroundPosition = 'center';
+                avatarContainer.innerHTML = '';
                 avatarText.style.display = 'none';
-                
                 updateUI();
+            } else {
+                // Gagal, kembalikan
+                avatarContainer.style.backgroundImage = originalStyle;
+                avatarContainer.innerHTML = originalContent;
+                if (!originalStyle) avatarText.style.display = 'flex';
             }
         } else if (file && file.size > 2 * 1024 * 1024) {
             showNotification('File terlalu besar! Maksimal 2MB', 'error');
