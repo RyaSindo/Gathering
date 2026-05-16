@@ -606,6 +606,53 @@ body {
     margin-bottom: 16px;
 }
 
+.message-file .file-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background-color: #1e1f22;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #dbdee1;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.message-file .file-attachment:hover {
+    background-color: #2b2d31;
+    color: #5865f2;
+}
+
+.message-file .file-attachment i {
+    font-size: 24px;
+    width: 32px;
+    text-align: center;
+}
+
+.message-file .file-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.message-file .file-name {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.message-file .file-size {
+    font-size: 10px;
+    color: #949ba4;
+}
+
+.message-file .file-extension {
+    font-size: 9px;
+    background-color: #404249;
+    padding: 2px 6px;
+    border-radius: 12px;
+    margin-left: 8px;
+}
+
 /* ============ NEW STYLES FOR MESSAGE AVATAR (Discord-like) ============ */
 .message {
     display: flex;
