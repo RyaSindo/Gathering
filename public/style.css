@@ -607,7 +607,7 @@ body {
 }
 
 .message-file .file-attachment {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 12px;
     background-color: #1e1f22;
