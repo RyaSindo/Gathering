@@ -1168,7 +1168,6 @@ function selectChannel(channelId) {
 // renderMessages
 async function renderMessages() {
     const container = document.getElementById('messagesContainer');
-    const avatarCache = {}; // Cache untuk avatar pengguna
     if (!container) return;
     
     if (!currentChannelId) {
@@ -1210,15 +1209,6 @@ async function renderMessages() {
             senderName = (senderProfile.displayName && senderProfile.displayName !== (senderUser.id || senderUser.username)) 
                 ? senderProfile.displayName 
                 : senderUser.username;
-        }
-
-        // Dapatkan avatar pengirim
-        let avatarHtml = '';
-        const cacheKey = senderUser?.id || senderUser?.username;
-        if (cacheKey && userProfiles[cacheKey]) {
-            avatarHtml = avatarCache[cacheKey];
-        } else {
-            if (cacheKey) avatarCache[cacheKey] = avatarHtml; // Simpan ke cache meskipun null untuk menghindari permintaan berulang
         }
 
         if (senderUser) {
