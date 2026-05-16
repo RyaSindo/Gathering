@@ -572,21 +572,20 @@ app.put('/api/profiles/:userId', async (req, res) => {
     try {
         const { userId } = req.params;
         const { displayName, bio, avatarUrl } = req.body;
-        
+        console.log(`Updating profile for ${userId}:`, { displayName, bio, avatarUrl }); // log
         const updateData = {};
         if (displayName !== undefined) updateData.displayName = displayName;
         if (bio !== undefined) updateData.bio = bio;
         if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
-        
         const result = await db.collection('profiles').findOneAndUpdate(
             { userId },
             { $set: { ...updateData, updatedAt: new Date().toISOString() } },
             { upsert: true, returnDocument: 'after' }
         );
-        
         io.emit('profile-updated', { userId, profile: result.value });
         res.json(result.value);
     } catch (err) {
+        console.error('Error updating profile:', err);
         res.status(500).json({ error: err.message });
     }
 });

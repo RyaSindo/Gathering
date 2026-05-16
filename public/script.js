@@ -196,21 +196,26 @@ async function updateUserProfile(userId, data) {
             body: JSON.stringify(data)
         });
         
+        // Periksa status HTTP
         if (response.ok) {
             const updatedProfile = await response.json();
             userProfiles[idStr] = updatedProfile;
             
-            // Update UI
+            // Update UI secara lokal (tanpa menunggu reload)
             await updateUI();
             
+            showNotification('Profil berhasil diperbarui!', 'success');
             return updatedProfile;
         } else {
-            showNotification('Gagal memperbarui profil', 'error');
+            // Baca pesan error dari server
+            const errorData = await response.json();
+            console.error('Update profile error:', errorData);
+            showNotification(errorData.error || 'Gagal memperbarui profil', 'error');
             return null;
         }
     } catch (error) {
         console.error('Error updating profile:', error);
-        showNotification('Error memperbarui profil', 'error');
+        showNotification('Error memperbarui profil: ' + error.message, 'error');
         return null;
     }
 }
@@ -1574,26 +1579,35 @@ document.addEventListener('DOMContentLoaded', async () => {
             avatarContainer.style.backgroundImage = 'none';
             avatarContainer.innerHTML = `<div class="profile-avatar-loading"><div class="loading-spinner"></div></div>`;
         
+            // Upload avatar ke Cloudinary
             const avatarUrl = await uploadAvatar(file);
             if (avatarUrl) {
                 const userId = currentUser?.id || currentUser?.username;
-                await updateUserProfile(userId, { avatarUrl: avatarUrl });
-            
-                // Update tampilan
-                avatarContainer.style.backgroundImage = `url(${avatarUrl})`;
-                avatarContainer.style.backgroundSize = 'cover';
-                avatarContainer.style.backgroundPosition = 'center';
-                avatarContainer.innerHTML = '';
-                avatarText.style.display = 'none';
-                updateUI();
+                // Update profil di database
+                const updated = await updateUserProfile(userId, { avatarUrl: avatarUrl });
+                if (updated) {
+                    // Update tampilan avatar di modal dan sidebar
+                    avatarContainer.style.backgroundImage = `url(${avatarUrl})`;
+                    avatarContainer.style.backgroundSize = 'cover';
+                    avatarContainer.style.backgroundPosition = 'center';
+                    avatarContainer.innerHTML = '';
+                    avatarText.style.display = 'none';
+                    await updateUI(); // refresh sidebar
+                } else {
+                    // Jika update gagal, kembalikan tampilan
+                    avatarContainer.style.backgroundImage = originalStyle;
+                    avatarContainer.innerHTML = originalContent;
+                    if (!originalStyle) avatarText.style.display = 'flex';
+                    showNotification('Gagal menyimpan avatar ke database', 'error');
+                }
             } else {
-                // Gagal, kembalikan
+                // Upload gagal, kembalikan tampilan
                 avatarContainer.style.backgroundImage = originalStyle;
                 avatarContainer.innerHTML = originalContent;
                 if (!originalStyle) avatarText.style.display = 'flex';
             }
         } else if (file && file.size > 2 * 1024 * 1024) {
-            showNotification('File terlalu besar! Maksimal 2MB', 'error');
+            showNotification('File terlalu besar! Maksimal  2MB', 'error');
         }
     });
     
